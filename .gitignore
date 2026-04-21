@@ -205,3 +205,23 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ---- Project specific ----
+
+# macOS metadata
+.DS_Store
+
+# Generated intermediate artifacts
+figures/
+data/
+
+# Foundry (contracts/)
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/
+contracts/foundry.lock
+
+# Rust (searcher/)
+searcher/target/
+
