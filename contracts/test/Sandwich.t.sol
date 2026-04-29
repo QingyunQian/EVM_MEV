@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
+import "forge-std/console2.sol";
 import {MiniAMM} from "../src/MiniAMM.sol";
 import {MockERC20} from "../src/MockERC20.sol";
 
@@ -66,23 +67,30 @@ contract SandwichTest is Test {
         uint256 minOut = (honestQuote * 99) / 100;
 
         uint256 attackerXBefore = X.balanceOf(attacker);
+        console2.log("honest quote Y (wad)", honestQuote);
+        console2.log("victim minOut Y (wad)", minOut);
 
         vm.prank(attacker);
         uint256 frontOut = pool.swapXForY(ATTACKER_A_WAD, 0);
         assertGt(frontOut, 0, "front out > 0");
+        console2.log("attacker front-run in X (wad)", ATTACKER_A_WAD);
+        console2.log("attacker front-run out Y (wad)", frontOut);
 
         vm.prank(victim);
         uint256 victimOut = pool.swapXForY(1_000 * UNIT, minOut);
         assertGe(victimOut, minOut, "victim slippage honored");
+        console2.log("victim actual out Y (wad)", victimOut);
 
         vm.prank(attacker);
         uint256 backOut = pool.swapYForX(frontOut, 0);
+        console2.log("attacker back-run out X (wad)", backOut);
 
         uint256 attackerXAfter = X.balanceOf(attacker);
         int256 profit = int256(attackerXAfter) - int256(attackerXBefore);
         assertGt(profit, 0, "attacker profitable");
 
         uint256 uprofit = uint256(profit);
+        console2.log("attacker profit X (wad)", uprofit);
         // Allow 1% deviation: on-chain math rounds at every swap; Rust uses f64.
         uint256 tol = RUST_PROFIT_WAD / 100;
         _assertClose(uprofit, RUST_PROFIT_WAD, tol, "profit within 1% of rust");
@@ -90,6 +98,7 @@ contract SandwichTest is Test {
         // Victim's extra loss should be close to their 1% slippage tolerance.
         uint256 extraLoss = honestQuote - victimOut;
         uint256 maxLoss = honestQuote / 100;
+        console2.log("victim extra loss Y (wad)", extraLoss);
         assertLe(extraLoss, maxLoss, "extra loss bounded by slippage");
         // At the Rust-optimal A, extra loss is essentially at the slippage cap.
         assertGt(extraLoss * 100, maxLoss * 99, "extra loss near slippage cap");

@@ -1,8 +1,9 @@
 //! CLI entry point for the sandwich MEV simulator.
 //!
-//! Two subcommands:
-//!   * `simulate` – run a single sandwich scenario and print the outcome.
-//!   * `sweep`    – run the parametric sweeps that the report / plots consume.
+//! Three subcommands:
+//!   * `simulate` - run a single sandwich scenario and print the outcome.
+//!   * `trace`    - print the ordered pool-state trace for classroom demos.
+//!   * `sweep`    - run the parametric sweeps that the report / plots consume.
 
 use std::path::PathBuf;
 
@@ -15,8 +16,8 @@ mod report;
 mod strategy;
 
 use crate::amm::Pool;
-use crate::experiments::{sweep_fee, sweep_pool_depth, sweep_slippage, sweep_victim_size};
-use crate::strategy::{optimal_sandwich, VictimSwap};
+use crate::experiments::{sweep_attacker_size, sweep_fee, sweep_pool_depth, sweep_slippage, sweep_victim_size};
+use crate::strategy::{optimal_sandwich, simulate, VictimSwap};
 
 #[derive(Parser)]
 #[command(name = "sandwich", about = "Educational sandwich MEV simulator for CPMMs")]
@@ -39,6 +40,24 @@ enum Cmd {
         victim: f64,
         #[arg(long, default_value_t = 0.01)]
         slippage: f64,
+        #[arg(long)]
+        attacker: Option<f64>,
+    },
+    /// Print the ordered pool-state trace for a sandwich.
+    Trace {
+        #[arg(long, default_value_t = 100_000.0)]
+        x: f64,
+        #[arg(long, default_value_t = 100_000.0)]
+        y: f64,
+        #[arg(long, default_value_t = 0.003)]
+        fee: f64,
+        #[arg(long, default_value_t = 1_000.0)]
+        victim: f64,
+        #[arg(long, default_value_t = 0.01)]
+        slippage: f64,
+        /// Attacker front-run size. Defaults to the optimizer's best value.
+        #[arg(long)]
+        attacker: Option<f64>,
     },
     /// Run all sweeps and write CSVs into `--out-dir` (default `../data`).
     Sweep {
@@ -50,12 +69,19 @@ enum Cmd {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
-        Cmd::Simulate { x, y, fee, victim, slippage } => {
+        Cmd::Simulate { x, y, fee, victim, slippage, attacker } => {
             let pool = Pool::new(x, y, fee);
             let v = VictimSwap { v: victim, slippage };
-            let o = optimal_sandwich(&pool, &v);
+            let o = attacker
+                .map(|a| simulate(&pool, &v, a))
+                .unwrap_or_else(|| optimal_sandwich(&pool, &v));
             println!("pool: x={x}  y={y}  fee={fee}");
             println!("victim: v={victim}  slippage={slippage}");
+            if let Some(a) = attacker {
+                println!("attacker: fixed front-run size={a}");
+            } else {
+                println!("attacker: optimized front-run size");
+            }
             println!();
             println!("attacker_in         = {:>14.6}", o.attacker_in);
             println!("attacker_front_out  = {:>14.6}", o.attacker_front_out);
@@ -77,10 +103,17 @@ fn main() -> Result<()> {
             println!("price_after_victim  = {:>14.6}", o.price_after_victim);
             println!("price_after_back    = {:>14.6}", o.price_after_back);
         }
+        Cmd::Trace { x, y, fee, victim, slippage, attacker } => {
+            let pool = Pool::new(x, y, fee);
+            let v = VictimSwap { v: victim, slippage };
+            let a = attacker.unwrap_or_else(|| optimal_sandwich(&pool, &v).attacker_in);
+            print_trace(pool, v, a);
+        }
         Cmd::Sweep { out_dir } => {
             std::fs::create_dir_all(&out_dir)?;
 
             let pool = Pool::new(100_000.0, 100_000.0, 0.003);
+            let reference_victim = VictimSwap { v: 1_000.0, slippage: 0.01 };
 
             let victim_rows = sweep_victim_size(pool, 0.01, 10.0, 20_000.0, 60);
             report::write_csv(&victim_rows, &out_dir.join("sweep_victim_size.csv"))?;
@@ -95,8 +128,51 @@ fn main() -> Result<()> {
             let fee_rows = sweep_fee(100_000.0, 100_000.0, 1_000.0, 0.01, &fees);
             report::write_csv(&fee_rows, &out_dir.join("sweep_fee.csv"))?;
 
+            let attacker_rows = sweep_attacker_size(pool, reference_victim, 120);
+            report::write_csv(&attacker_rows, &out_dir.join("sweep_attacker_size.csv"))?;
+
             println!("wrote CSVs to {}", out_dir.display());
         }
     }
     Ok(())
+}
+
+fn print_trace(pool: Pool, victim: VictimSwap, attacker_in: f64) {
+    let honest_out = pool.preview_x_for_y(victim.v);
+    let min_out = honest_out * (1.0 - victim.slippage);
+    let outcome = simulate(&pool, &victim, attacker_in);
+
+    println!("pool: x={}  y={}  fee={}", pool.x, pool.y, pool.fee);
+    println!("victim: v={}  slippage={}  honest_out={:.6}  min_out={:.6}", victim.v, victim.slippage, honest_out, min_out);
+    println!("attacker_in={:.6}", attacker_in);
+    println!();
+    println!("| step | actor | action | amount_in | amount_out | reserve_x | reserve_y | price_y_per_x | note |");
+    println!("| ---- | ----- | ------ | --------- | ---------- | --------- | --------- | ------------- | ---- |");
+    println!("| 0 | - | initial pool | - | - | {:.6} | {:.6} | {:.6} | quote before attack |", pool.x, pool.y, pool.price());
+
+    let mut p = pool;
+    let front_out = p.swap_x_for_y(attacker_in);
+    println!("| 1 | attacker | front-run X->Y | {:.6} X | {:.6} Y | {:.6} | {:.6} | {:.6} | pushes price against victim |",
+        attacker_in, front_out, p.x, p.y, p.price());
+
+    let victim_preview = p.preview_x_for_y(victim.v);
+    if victim_preview < min_out {
+        println!("| 2 | victim | X->Y | {:.6} X | {:.6} Y | {:.6} | {:.6} | {:.6} | reverts: below min_out |",
+            victim.v, victim_preview, p.x, p.y, p.price());
+        let back_out = p.swap_y_for_x(front_out);
+        println!("| 3 | attacker | unwind Y->X | {:.6} Y | {:.6} X | {:.6} | {:.6} | {:.6} | closes position after failed sandwich |",
+            front_out, back_out, p.x, p.y, p.price());
+    } else {
+        let victim_out = p.swap_x_for_y(victim.v);
+        println!("| 2 | victim | X->Y | {:.6} X | {:.6} Y | {:.6} | {:.6} | {:.6} | executes near slippage bound |",
+            victim.v, victim_out, p.x, p.y, p.price());
+        let back_out = p.swap_y_for_x(front_out);
+        println!("| 3 | attacker | back-run Y->X | {:.6} Y | {:.6} X | {:.6} | {:.6} | {:.6} | realizes price-impact profit |",
+            front_out, back_out, p.x, p.y, p.price());
+    }
+
+    println!();
+    println!("attacker_profit (X) = {:.6}", outcome.attacker_profit);
+    println!("victim_extra_loss   = {:.6}", outcome.victim_extra_loss);
+    println!("reverted            = {}", outcome.reverted);
 }

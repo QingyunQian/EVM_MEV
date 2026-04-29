@@ -4,9 +4,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::experiments::SweepRow;
-
-pub fn write_csv(rows: &[SweepRow], path: &Path) -> Result<()> {
+pub fn write_csv<T: serde::Serialize>(rows: &[T], path: &Path) -> Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }

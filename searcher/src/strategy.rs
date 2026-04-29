@@ -85,11 +85,13 @@ pub fn simulate(pool: &Pool, victim: &VictimSwap, a: f64) -> SandwichOutcome {
 
     let victim_out_preview = p.preview_x_for_y(victim.v);
     if victim_out_preview < min_out {
+        let back_out = p.swap_y_for_x(front_out);
+        let price_after_back = p.price();
         return SandwichOutcome {
             attacker_in: a,
             attacker_front_out: front_out,
-            attacker_back_out: 0.0,
-            attacker_profit: -a,
+            attacker_back_out: back_out,
+            attacker_profit: back_out - a,
             victim_min_out: min_out,
             victim_actual_out: victim_out_preview,
             victim_honest_out: honest_out,
@@ -98,7 +100,7 @@ pub fn simulate(pool: &Pool, victim: &VictimSwap, a: f64) -> SandwichOutcome {
             price_before,
             price_after_front,
             price_after_victim: price_after_front,
-            price_after_back: price_after_front,
+            price_after_back,
         };
     }
 

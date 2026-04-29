@@ -25,6 +25,7 @@ final_project/
 cd searcher
 cargo test --release
 cargo run --release -- simulate --victim 1000 --slippage 0.01
+cargo run --release -- trace --victim 1000 --slippage 0.01
 
 # 2. Parametric sweeps -> CSV
 cargo run --release -- sweep --out-dir ../data
@@ -57,6 +58,55 @@ For a 100k / 100k pool with a 0.30% fee and a victim swapping 1,000 X with
 The extra loss is essentially exactly at the victim's 1% slippage cap,
 confirming that a rational attacker pushes all the way to the constraint.
 The on-chain Foundry test reproduces the same profit to within 1%.
+
+## Classroom demo path
+
+For a live lab, use [`docs/lab_walkthrough.md`](docs/lab_walkthrough.md) as
+the teaching script. The most useful demo command is:
+
+```bash
+cd searcher
+cargo run --release -- trace --victim 1000 --slippage 0.01
+```
+
+It prints the ordered sandwich sequence as pool states:
+
+1. Initial AMM reserves and honest quote.
+2. Attacker front-run that moves the price.
+3. Victim swap that still passes `min_out`.
+4. Attacker back-run that realizes the profit.
+
+To show a failed over-sized attack, fix the attacker amount manually:
+
+```bash
+cargo run --release -- simulate --victim 1000 --slippage 0.01 --attacker 2000
+```
+
+The sweep also generates `sweep_attacker_size.csv`, and the plotting script
+renders `fig_attacker_size.png`, which is the clearest figure for explaining
+why the optimal attacker size sits near the victim's slippage boundary.
+
+## Defense discussion for the lab
+
+The attack works because the victim's swap is visible before execution, and
+because the victim gives the transaction enough slippage tolerance to remain
+valid after the attacker moves the price. The final part of the lab should
+connect each defense back to one of those two assumptions.
+
+| Defense | What it changes | Lab takeaway |
+| ------- | --------------- | ------------ |
+| Lower slippage tolerance | Shrinks the feasible range for the attacker's front-run size | The attacker cannot push the victim as far before the transaction reverts. |
+| Deeper liquidity pool | Reduces price impact for the same victim trade | The same sandwich produces less price movement and lower profit. |
+| Higher fee tier | Makes the attacker pay more on the front-run and back-run | Once round-trip fees exceed the available slippage, the sandwich becomes unprofitable. |
+| Private transaction route | Hides the victim trade from the public mempool | If the attacker cannot see the trade in advance, they cannot reliably place the front-run. |
+| Batch auction or intent-based venue | Removes strict per-transaction ordering around a public AMM swap | The attacker no longer gets the ordered three-step sequence needed for a sandwich. |
+
+A useful classroom prompt is to ask students which variable they would change
+first if they were the victim. In this simulator, lowering slippage is the
+most direct user-controlled defense: it narrows the attacker's feasible region
+and visibly reduces both attacker profit and victim extra loss. For larger
+trades, the more structural defenses are deeper liquidity, private routing,
+and auction-style execution.
 
 ## Scope notes
 
