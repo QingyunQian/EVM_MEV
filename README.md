@@ -303,28 +303,26 @@ environment, plain `forge test -vv` can compile successfully and then fail in
 Foundry's network/proxy path; the offline command is the stable classroom
 version.
 
-## 30-Minute Presentation Script
+## Repository Architecture
 
-| Time | Topic | What to show |
-| ---- | ----- | ------------ |
-| 0-3 min | MEV and sandwich background | Start from the sequence diagram: attacker front-runs, victim executes at worse price, attacker back-runs. |
-| 3-8 min | CPMM and slippage | Explain `x * y = k`, price `y / x`, honest quote, and `minOut`. |
-| 8-15 min | Live trace | Run `cargo run --release -- trace --victim 1000 --slippage 0.01`; walk row by row through the reserve table. |
-| 15-20 min | Success vs failure | Run the oversized attacker example; then show `fig_attacker_size.png`. |
-| 20-24 min | Parameter sweeps | Show slippage, pool depth, fee, and victim-size figures in that order. |
-| 24-27 min | EVM validation | Run `forge test -vv --offline`; point out that Solidity integer math matches Rust within 1%. |
-| 27-30 min | Defenses and extensions | Run `route` and `bundle`; tie every defense to a broken assumption: visible order, high price impact, low round-trip cost, route choice, or strict ordering. |
+The repo is organized as a small teaching pipeline: the Rust simulator owns the
+reference sandwich model, generated CSVs and figures turn that model into
+presentation material, and the Foundry project cross-checks the same mechanism
+on a local EVM.
 
-## Implemented Extension Demos
+```text
+searcher/  ->  data/  ->  analysis/plot.py  ->  figures/
+    |
+    +-> dashboard/index.html
+    +-> contracts/ Foundry EVM validation
+```
 
-These are available for Q&A or bonus slides after the main 30-minute flow:
-
-| Feature | Command or file | What it demonstrates |
-| ------- | --------------- | -------------------- |
-| Gas-aware execution | `cargo run --release -- simulate --gas-units 500000 --base-fee-gwei 25 --priority-fee-gwei 2 --native-price-x 1` | Gross MEV can be positive while executable net profit is smaller or negative. |
-| Gas-aware sweep plot | `figures/fig_gas.png` | Increasing base fee eventually removes the profitable attack window. |
-| Defense sweep | `cargo run --release -- defense --out-dir ../data` | Slippage, depth, fees, gas, and private routing are compared with one reference scenario. |
-| Saved dashboard scenarios | `dashboard/index.html` | Reference, high-gas, deep-pool, and oversized-attack cases can be switched live; charts show frontier, price path, and step candles with attacker buy/sell markers. |
-| Multi-hop route demo | `cargo run --release -- route` | Routing through multiple pools changes where price impact occurs and where the victim's `minOut` is checked. |
-| Bundle/order demo | `cargo run --release -- bundle` | The same transactions have different outcomes under honest, sandwich, oversized, and victim-first ordering. |
-| Oversized EVM failure test | `contracts/test/MiniAMM.t.sol` | Foundry verifies that an oversized front-run makes the victim revert and leaves the attacker unwinding at a loss. |
+| Layer | Main files | Responsibility |
+| ----- | ---------- | -------------- |
+| Core AMM model | `searcher/src/amm.rs` | Implements Uniswap-V2-style constant-product swap math, fees, quotes, and reserve updates. |
+| Sandwich logic | `searcher/src/strategy.rs` | Computes victim `minOut`, simulates front-run/victim/back-run order, detects reverts, and searches for the best attacker size. |
+| CLI and experiments | `searcher/src/main.rs`, `searcher/src/experiments.rs`, `searcher/src/report.rs` | Exposes `simulate`, `trace`, `sweep`, `defense`, `route`, and `bundle`; writes CSV outputs for analysis. |
+| Analysis outputs | `data/`, `analysis/plot.py`, `figures/` | Stores sweep results and renders the classroom PNG charts. |
+| Interactive demo | `dashboard/index.html` | Static browser dashboard that recomputes the same CPMM model for live parameter changes. |
+| EVM validation | `contracts/src/`, `contracts/test/`, `contracts/script/` | Minimal Solidity AMM/token contracts plus Foundry tests and scripts that reproduce the sandwich scenarios locally. |
+| Teaching material | `docs/`, `README.md`, `Final_Lab_Sandwich_MEV_EN.ipynb` | Mechanism notes, defenses, walkthrough material, and notebook flow for the final lab. |
