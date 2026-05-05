@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sandwich MEV Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17202a;
+      --muted: #5c6675;
+      --line: #d7dee8;
+      --panel: #ffffff;
+      --bg: #f4f7fb;
+      --red: #c7394b;
+      --blue: #276fbf;
+      --green: #16805b;
+      --amber: #a96600;
+      --dark: #25364a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.4;
+    }
+
+    header {
+      padding: 24px clamp(16px, 4vw, 48px) 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 40px);
+      letter-spacing: 0;
+    }
+
+    header p {
+      max-width: 920px;
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px clamp(16px, 4vw, 48px) 32px;
+    }
+
+    section,
+    aside {
+      min-width: 0;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 1px 2px rgba(20, 32, 48, 0.04);
+    }
+
+    .controls {
+      display: grid;
+      gap: 16px;
+      position: sticky;
+      top: 12px;
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+    }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--dark);
+      font-weight: 650;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--blue);
+    }
+
+    .value {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 34px;
+      font-size: 14px;
+      color: var(--dark);
+    }
+
+    .toggle input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--blue);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfe;
+      min-height: 84px;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 6px;
+      font-size: clamp(18px, 2.4vw, 26px);
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .ok {
+      color: var(--green);
+    }
+
+    .bad {
+      color: var(--red);
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+      gap: 16px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .key {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 3px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    .state-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .state-table th,
+    .state-table td {
+      padding: 9px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .state-table th:first-child,
+    .state-table td:first-child,
+    .state-table th:nth-child(2),
+    .state-table td:nth-child(2) {
+      text-align: left;
+    }
+
+    .state-table th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 750;
+      background: #e9f7f1;
+      color: var(--green);
+    }
+
+    .status.reverted {
+      background: #fdecef;
+      color: var(--red);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    @media (max-width: 960px) {
+      main,
+      .charts {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        position: static;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .state-table {
+        font-size: 12px;
+      }
+
+      .state-table th,
+      .state-table td {
+        padding: 7px 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sandwich MEV Dashboard</h1>
+    <p>Constant-product AMM simulator for the classroom demo. The default values match the Rust reference scenario.</p>
+  </header>
+
+  <main>
+    <aside class="controls panel">
+      <div class="toggle">
+        <input id="autoOptimal" type="checkbox" checked>
+        <label for="autoOptimal">Use optimal attacker size</label>
+      </div>
+
+      <div class="control">
+        <label for="victim">Victim size <span id="victimValue" class="value"></span></label>
+        <input id="victim" type="range" min="100" max="5000" step="50" value="1000">
+      </div>
+
+      <div class="control">
+        <label for="slippage">Slippage <span id="slippageValue" class="value"></span></label>
+        <input id="slippage" type="range" min="0" max="5" step="0.05" value="1">
+      </div>
+
+      <div class="control">
+        <label for="depth">Pool depth per side <span id="depthValue" class="value"></span></label>
+        <input id="depth" type="range" min="10000" max="500000" step="5000" value="100000">
+      </div>
+
+      <div class="control">
+        <label for="fee">Pool fee <span id="feeValue" class="value"></span></label>
+        <input id="fee" type="range" min="0" max="2" step="0.01" value="0.3">
+      </div>
+
+      <div class="control">
+        <label for="attacker">Attacker size <span id="attackerValue" class="value"></span></label>
+        <input id="attacker" type="range" min="0" max="3000" step="1" value="507">
+      </div>
+    </aside>
+
+    <section class="grid">
+      <div class="metrics">
+        <div class="metric">
+          <span>Attacker profit</span>
+          <strong id="profit"></strong>
+        </div>
+        <div class="metric">
+          <span>Attacker ROI</span>
+          <strong id="roi"></strong>
+        </div>
+        <div class="metric">
+          <span>Victim output</span>
+          <strong id="victimOut"></strong>
+        </div>
+        <div class="metric">
+          <span>Status</span>
+          <strong><span id="status" class="status"></span></strong>
+        </div>
+      </div>
+
+      <div class="charts">
+        <div class="panel">
+          <h2>Attacker Size Frontier</h2>
+          <canvas id="frontier" width="900" height="460"></canvas>
+          <div class="legend">
+            <span class="key" style="color: var(--red)"><span class="swatch"></span>attacker PnL</span>
+            <span class="key" style="color: var(--blue)"><span class="swatch"></span>victim output</span>
+            <span class="key" style="color: var(--amber)"><span class="swatch"></span>victim minOut</span>
+            <span class="key" style="color: var(--dark)"><span class="swatch"></span>selected attacker</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Pool Price Path</h2>
+          <canvas id="states" width="520" height="460"></canvas>
+          <div class="legend">
+            <span class="key" style="color: var(--green)"><span class="swatch"></span>price Y/X</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>State Table</h2>
+        <table class="state-table">
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Action</th>
+              <th>Reserve X</th>
+              <th>Reserve Y</th>
+              <th>Price Y/X</th>
+            </tr>
+          </thead>
+          <tbody id="stateRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const els = {
+      autoOptimal: document.getElementById("autoOptimal"),
+      victim: document.getElementById("victim"),
+      slippage: document.getElementById("slippage"),
+      depth: document.getElementById("depth"),
+      fee: document.getElementById("fee"),
+      attacker: document.getElementById("attacker"),
+      victimValue: document.getElementById("victimValue"),
+      slippageValue: document.getElementById("slippageValue"),
+      depthValue: document.getElementById("depthValue"),
+      feeValue: document.getElementById("feeValue"),
+      attackerValue: document.getElementById("attackerValue"),
+      profit: document.getElementById("profit"),
+      roi: document.getElementById("roi"),
+      victimOut: document.getElementById("victimOut"),
+      status: document.getElementById("status"),
+      stateRows: document.getElementById("stateRows"),
+      frontier: document.getElementById("frontier"),
+      states: document.getElementById("states")
+    };
+
+    const fmt = (n, d = 3) => Number.isFinite(n) ? n.toLocaleString("en-US", {
+      maximumFractionDigits: d,
+      minimumFractionDigits: d
+    }) : "-";
+
+    function previewXForY(pool, dx) {
+      const dxEff = dx * (1 - pool.fee);
+      return pool.y * dxEff / (pool.x + dxEff);
+    }
+
+    function previewYForX(pool, dy) {
+      const dyEff = dy * (1 - pool.fee);
+      return pool.x * dyEff / (pool.y + dyEff);
+    }
+
+    function swapXForY(pool, dx) {
+      const out = previewXForY(pool, dx);
+      pool.x += dx;
+      pool.y -= out;
+      return out;
+    }
+
+    function swapYForX(pool, dy) {
+      const out = previewYForX(pool, dy);
+      pool.y += dy;
+      pool.x -= out;
+      return out;
+    }
+
+    function simulate(input, attackerIn) {
+      const start = { x: input.depth, y: input.depth, fee: input.fee };
+      const honestOut = previewXForY(start, input.victim);
+      const minOut = honestOut * (1 - input.slippage);
+      const states = [{ step: "0", action: "initial", x: start.x, y: start.y, price: start.y / start.x }];
+
+      if (attackerIn <= 0) {
+        const p0 = { ...start };
+        const victimActual = swapXForY(p0, input.victim);
+        states.push({ step: "1", action: "victim", x: p0.x, y: p0.y, price: p0.y / p0.x });
+        return {
+          attackerIn: 0,
+          frontOut: 0,
+          backOut: 0,
+          profit: 0,
+          roi: 0,
+          honestOut,
+          minOut,
+          victimActual,
+          victimExtraLoss: 0,
+          reverted: false,
+          states
+        };
+      }
+
+      const p = { ...start };
+      const frontOut = swapXForY(p, attackerIn);
+      states.push({ step: "1", action: "front-run", x: p.x, y: p.y, price: p.y / p.x });
+
+      const victimPreview = previewXForY(p, input.victim);
+      if (victimPreview < minOut) {
+        states.push({ step: "2", action: "victim reverts", x: p.x + 0, y: p.y + 0, price: p.y / p.x });
+        const backOut = swapYForX(p, frontOut);
+        states.push({ step: "3", action: "unwind", x: p.x, y: p.y, price: p.y / p.x });
+        return {
+          attackerIn,
+          frontOut,
+          backOut,
+          profit: backOut - attackerIn,
+          roi: (backOut - attackerIn) / attackerIn,
+          honestOut,
+          minOut,
+          victimActual: victimPreview,
+          victimExtraLoss: honestOut - victimPreview,
+          reverted: true,
+          states
+        };
+      }
+
+      const victimActual = swapXForY(p, input.victim);
+      states.push({ step: "2", action: "victim", x: p.x, y: p.y, price: p.y / p.x });
+      const backOut = swapYForX(p, frontOut);
+      states.push({ step: "3", action: "back-run", x: p.x, y: p.y, price: p.y / p.x });
+      return {
+        attackerIn,
+        frontOut,
+        backOut,
+        profit: backOut - attackerIn,
+        roi: (backOut - attackerIn) / attackerIn,
+        honestOut,
+        minOut,
+        victimActual,
+        victimExtraLoss: honestOut - victimActual,
+        reverted: false,
+        states
+      };
+    }
+
+    function maxFeasible(input, hi) {
+      if (!simulate(input, hi).reverted) return hi;
+      let lo = 0;
+      for (let i = 0; i < 64; i += 1) {
+        const mid = (lo + hi) / 2;
+        if (simulate(input, mid).reverted) hi = mid;
+        else lo = mid;
+      }
+      return lo;
+    }
+
+    function optimal(input) {
+      const cap = input.depth * 10;
+      const hi0 = maxFeasible(input, cap);
+      if (hi0 <= 0) return simulate(input, 0);
+
+      const phi = (Math.sqrt(5) - 1) / 2;
+      let lo = 0;
+      let hi = hi0;
+      let c = hi - phi * (hi - lo);
+      let d = lo + phi * (hi - lo);
+      const profit = (a) => {
+        const o = simulate(input, a);
+        return o.reverted ? Number.NEGATIVE_INFINITY : o.profit;
+      };
+
+      for (let i = 0; i < 100; i += 1) {
+        if (Math.abs(hi - lo) < 1e-10) break;
+        if (profit(c) > profit(d)) hi = d;
+        else lo = c;
+        c = hi - phi * (hi - lo);
+        d = lo + phi * (hi - lo);
+      }
+
+      const best = simulate(input, (lo + hi) / 2);
+      return best.profit > 0 && !best.reverted ? best : simulate(input, 0);
+    }
+
+    function currentInput() {
+      return {
+        victim: Number(els.victim.value),
+        slippage: Number(els.slippage.value) / 100,
+        depth: Number(els.depth.value),
+        fee: Number(els.fee.value) / 100
+      };
+    }
+
+    function drawFrontier(input, selected, best) {
+      const canvas = els.frontier;
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = { l: 58, r: 58, t: 24, b: 46 };
+      const upper = Math.max(best.attackerIn * 2.4, input.victim * 1.5, 1);
+      const rows = [];
+      for (let i = 0; i <= 160; i += 1) {
+        const a = upper * i / 160;
+        rows.push({ a, ...simulate(input, a) });
+      }
+
+      const profits = rows.map(r => r.profit);
+      const outputs = rows.map(r => r.victimActual);
+      const yProfitMin = Math.min(0, ...profits);
+      const yProfitMax = Math.max(1, ...profits);
+      const outMin = Math.min(input.slippage > 0 ? selected.minOut : selected.honestOut, ...outputs);
+      const outMax = Math.max(selected.honestOut, ...outputs);
+
+      const x = a => pad.l + (a / upper) * (w - pad.l - pad.r);
+      const yProfit = p => h - pad.b - ((p - yProfitMin) / (yProfitMax - yProfitMin || 1)) * (h - pad.t - pad.b);
+      const yOut = out => h - pad.b - ((out - outMin) / (outMax - outMin || 1)) * (h - pad.t - pad.b);
+
+      ctx.strokeStyle = "#d7dee8";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, pad.t);
+      ctx.lineTo(pad.l, h - pad.b);
+      ctx.lineTo(w - pad.r, h - pad.b);
+      ctx.stroke();
+
+      ctx.fillStyle = "#5c6675";
+      ctx.font = "13px system-ui";
+      ctx.fillText("attacker size X", w / 2 - 48, h - 12);
+      ctx.save();
+      ctx.translate(18, h / 2 + 42);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("attacker PnL X", 0, 0);
+      ctx.restore();
+      ctx.save();
+      ctx.translate(w - 16, h / 2 + 40);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("victim output Y", 0, 0);
+      ctx.restore();
+
+      function line(points, color, yFn, dash = []) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash(dash);
+        ctx.beginPath();
+        points.forEach((r, i) => {
+          const px = x(r.a);
+          const py = yFn(r);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      line(rows, "#c7394b", r => yProfit(r.profit));
+      line(rows, "#276fbf", r => yOut(r.victimActual), [6, 5]);
+
+      ctx.strokeStyle = "#a96600";
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(pad.l, yOut(selected.minOut));
+      ctx.lineTo(w - pad.r, yOut(selected.minOut));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.strokeStyle = "#25364a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x(selected.attackerIn), pad.t);
+      ctx.lineTo(x(selected.attackerIn), h - pad.b);
+      ctx.stroke();
+
+      ctx.fillStyle = "#25364a";
+      ctx.beginPath();
+      ctx.arc(x(best.attackerIn), yProfit(best.profit), 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawStates(outcome) {
+      const canvas = els.states;
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      const pad = { l: 52, r: 24, t: 24, b: 56 };
+      const prices = outcome.states.map(s => s.price);
+      const min = Math.min(...prices) * 0.995;
+      const max = Math.max(...prices) * 1.005;
+      const x = i => pad.l + i * ((w - pad.l - pad.r) / Math.max(1, outcome.states.length - 1));
+      const y = p => h - pad.b - ((p - min) / (max - min || 1)) * (h - pad.t - pad.b);
+
+      ctx.strokeStyle = "#d7dee8";
+      ctx.beginPath();
+      ctx.moveTo(pad.l, pad.t);
+      ctx.lineTo(pad.l, h - pad.b);
+      ctx.lineTo(w - pad.r, h - pad.b);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#16805b";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      outcome.states.forEach((s, i) => {
+        if (i === 0) ctx.moveTo(x(i), y(s.price));
+        else ctx.lineTo(x(i), y(s.price));
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = "#17202a";
+      ctx.font = "12px system-ui";
+      outcome.states.forEach((s, i) => {
+        ctx.beginPath();
+        ctx.arc(x(i), y(s.price), 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillText(s.action, Math.max(8, x(i) - 34), h - 24);
+        ctx.fillText(fmt(s.price, 4), Math.max(8, x(i) - 25), y(s.price) - 10);
+      });
+    }
+
+    function render() {
+      const input = currentInput();
+      const best = optimal(input);
+      const maxManual = Math.max(best.attackerIn * 2.4, input.victim * 1.5, 1);
+      els.attacker.max = String(Math.ceil(maxManual));
+      if (els.autoOptimal.checked) {
+        els.attacker.value = String(best.attackerIn);
+      }
+      const attackerIn = Number(els.attacker.value);
+      const selected = els.autoOptimal.checked ? best : simulate(input, attackerIn);
+
+      els.victimValue.textContent = `${fmt(input.victim, 0)} X`;
+      els.slippageValue.textContent = `${fmt(input.slippage * 100, 2)}%`;
+      els.depthValue.textContent = `${fmt(input.depth, 0)} / side`;
+      els.feeValue.textContent = `${fmt(input.fee * 100, 2)}%`;
+      els.attackerValue.textContent = `${fmt(selected.attackerIn, 3)} X`;
+
+      els.profit.textContent = `${fmt(selected.profit, 6)} X`;
+      els.profit.className = selected.profit >= 0 ? "ok" : "bad";
+      els.roi.textContent = selected.attackerIn > 0 ? `${fmt(selected.roi * 100, 4)}%` : "0.0000%";
+      els.victimOut.textContent = `${fmt(selected.victimActual, 6)} Y`;
+      els.status.textContent = selected.reverted ? "reverted" : "executes";
+      els.status.className = selected.reverted ? "status reverted" : "status";
+
+      els.stateRows.innerHTML = selected.states.map(s => `
+        <tr>
+          <td>${s.step}</td>
+          <td>${s.action}</td>
+          <td>${fmt(s.x, 3)}</td>
+          <td>${fmt(s.y, 3)}</td>
+          <td>${fmt(s.price, 6)}</td>
+        </tr>
+      `).join("");
+
+      drawFrontier(input, selected, best);
+      drawStates(selected);
+    }
+
+    for (const el of [els.autoOptimal, els.victim, els.slippage, els.depth, els.fee, els.attacker]) {
+      el.addEventListener("input", render);
+      el.addEventListener("change", render);
+    }
+
+    render();
+  </script>
+</body>
+</html>
