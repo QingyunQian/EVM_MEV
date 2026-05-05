@@ -1,5 +1,11 @@
 # Sandwich MEV Classroom Demo
 
+[![Rust](https://img.shields.io/badge/Rust-simulator-orange)](searcher/)
+[![Foundry](https://img.shields.io/badge/Foundry-EVM%20tests-black)](contracts/)
+[![Tests](https://img.shields.io/badge/tests-cargo%20%2B%20forge-brightgreen)](#test-coverage)
+[![Coverage](https://img.shields.io/badge/coverage-model%20%2B%20EVM%20tests-blue)](#test-coverage)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 This repository is a teaching demo for sandwich MEV on a Uniswap-V2-style
 constant-product AMM. It shows the mechanism in three layers:
 
@@ -172,27 +178,57 @@ bundle, and `native_price_x` converts the gas token into token X units. When
 When `--attacker` is supplied manually, the CLI prints that fixed attack's net
 profit or loss.
 
-## Figures To Show In Class
+## Key Figures
 
-The figures are generated outputs, not hand-drawn slides. If the `figures/`
-directory is missing, regenerate it with the commands in the next section.
+These figures are the main visual evidence for the sandwich MEV
+story.
 
-| Figure | What to point at | Classroom takeaway |
-| ------ | ---------------- | ------------------ |
-| `figures/fig_attacker_size.png` | Profit curve peaks just before victim output crosses `minOut` | The attacker is constrained by slippage; the optimum is near the revert boundary. |
-| `figures/fig_slippage.png` | Profit and victim extra loss rise as slippage rises | Slippage is not only a UX setting; it is the attacker's feasible window. |
-| `figures/fig_pool_depth.png` | Profit shrinks in deeper pools | Larger reserves dilute price impact. |
-| `figures/fig_fee.png` | Profit collapses when fee becomes high enough | The attacker pays fees twice, on front-run and back-run. |
-| `figures/fig_victim_size.png` | Bigger victim trades create larger opportunities | Large visible swaps are more attractive targets. |
-| `figures/fig_gas.png` | Gross profit can stay positive while net profit disappears | Gas and priority fees decide whether theoretical MEV is executable. |
-| `figures/fig_defense.png` | Mitigations compared side by side | Lower slippage, deeper pools, higher fees, gas costs, and private routing shrink or remove the attack window. |
-
-The two figures below are the best ones to put directly on screen during the
-main explanation.
+### Attacker Size Frontier
 
 ![Attacker size frontier](figures/fig_attacker_size.png)
 
+This is the most important figure for explaining the attacker's decision. The
+profit curve increases as the front-run becomes larger, but only until the
+victim output approaches `minOut`. Past that boundary, the victim reverts and
+the attacker is left unwinding the failed front-run. The key meaning is that
+the optimal attack is not "as large as possible"; it is the largest profitable
+trade that still keeps the victim transaction valid.
+
+### Slippage Window
+
 ![Slippage effect](figures/fig_slippage.png)
+
+This figure shows why slippage tolerance is central to sandwich MEV. Higher
+slippage gives the attacker more room to move the pool price while keeping the
+victim transaction executable. The victim's extra loss and the attacker's
+profit rise together because both come from the same price-impact window.
+
+### Pool Depth
+
+![Pool depth effect](figures/fig_pool_depth.png)
+
+This figure shows the effect of liquidity. In a deeper pool, the same victim
+trade moves the price less, so the attacker has less price impact to harvest.
+The key meaning is that large reserves dilute sandwich profitability.
+
+### Gas Cost
+
+![Gas cost effect](figures/fig_gas.png)
+
+This figure separates theoretical MEV from executable profit. Gross sandwich
+profit can remain positive while gas and priority fees make net profit zero or
+negative. The key meaning is that a profitable-looking opportunity may not be
+rational to execute after transaction costs.
+
+### Defense Comparison
+
+![Defense comparison](figures/fig_defense.png)
+
+This figure compares mitigation ideas side by side. Lower slippage, deeper
+liquidity, higher fees, gas costs, and private routing all shrink the attack
+window in different ways. The key meaning is that no single chart is needed to
+claim "MEV disappears"; each defense changes the attacker's economics or
+visibility.
 
 ## Interactive Dashboard
 
@@ -228,24 +264,6 @@ It recomputes the same CPMM sandwich model in JavaScript and shows:
 Use it after the Rust trace when the audience understands the basic sequence:
 move one parameter at a time, then connect the curve movement back to the
 slippage and price-impact story.
-
-Recommended live-demo setup:
-
-1. Keep this README open for the diagrams and speaking script.
-2. Keep a terminal open in `searcher/` for `trace`, `simulate`, and `sweep`.
-3. Keep `dashboard/index.html` open in a browser for parameter Q&A.
-4. Keep a second terminal open in `contracts/` for `forge test -vv --offline`.
-
-During Q&A, use the dashboard in this order:
-
-1. Click "Reference" and connect the dashboard values to the Rust trace.
-2. Click "High gas" and show gross profit versus net profit.
-3. Click "Deep pool" and point out that the same victim trade moves price less.
-4. Click "Oversized" and show victim revert plus attacker unwind loss.
-5. Manually increase slippage and point out that the feasible attacker window expands.
-6. Increase the fee and point out that the attacker pays fees on both legs.
-7. Disable "Use optimal attacker size", drag attacker size too far, and show the
-   victim revert status.
 
 ## Reproduce The Demo
 
@@ -303,6 +321,26 @@ environment, plain `forge test -vv` can compile successfully and then fail in
 Foundry's network/proxy path; the offline command is the stable classroom
 version.
 
+## Test Coverage
+
+This repo uses a focused teaching test suite rather than a hosted coverage
+percentage. The important behaviors are covered in the two executable layers:
+
+- `searcher/`: Rust unit tests cover CPMM swap math, quote/swap consistency,
+  victim revert boundaries, and optimizer behavior.
+- `contracts/`: Foundry tests cover honest swaps, profitable sandwiches, and
+  oversized front-runs that make the victim revert.
+
+Run the coverage-relevant checks with:
+
+```bash
+cd searcher
+cargo test --release
+
+cd ../contracts
+forge test -vv --offline
+```
+
 ## Repository Architecture
 
 The repo is organized as a small teaching pipeline: the Rust simulator owns the
@@ -326,3 +364,10 @@ searcher/  ->  data/  ->  analysis/plot.py  ->  figures/
 | Interactive demo | `dashboard/index.html` | Static browser dashboard that recomputes the same CPMM model for live parameter changes. |
 | EVM validation | `contracts/src/`, `contracts/test/`, `contracts/script/` | Minimal Solidity AMM/token contracts plus Foundry tests and scripts that reproduce the sandwich scenarios locally. |
 | Teaching material | `docs/`, `README.md`, `Final_Lab_Sandwich_MEV_EN.ipynb` | Mechanism notes, defenses, walkthrough material, and notebook flow for the final lab. |
+
+## License
+
+This project is released under the MIT License. See `LICENSE` for the full
+license text.
+
+Copyright (c) 2026 QingyunQian.
