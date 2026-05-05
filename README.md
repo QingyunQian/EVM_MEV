@@ -56,8 +56,8 @@ reverts and the sandwich fails.
 | ---- | ------------------- | ---------- |
 | Rust simulator | CPMM math, victim slippage, fixed-size sandwich simulation, optimal attacker-size search, failure unwind, gas/priority-fee accounting, CLI commands | Shows the mechanism, optimal trade size, and executable profit after gas. |
 | Rust trace | `trace` command prints the ordered pool states | Best live demo for explaining the three-transaction sequence. |
-| Rust sweeps | Victim size, slippage, pool depth, fee, attacker size | Produces the data behind the classroom figures. |
-| Python plots | Five PNG figures generated from sweep CSVs | Converts the attack into visual stories. |
+| Rust sweeps | Victim size, slippage, pool depth, fee, attacker size, gas cost, defense comparison | Produces the data behind the classroom figures. |
+| Python plots | Seven PNG figures generated from sweep CSVs | Converts the attack into visual stories. |
 | Solidity contracts | `MiniAMM` and `MockERC20` | Small EVM version of the same AMM. |
 | Foundry tests | Honest swap test, profitable sandwich cross-check, oversized revert/unwind test | Confirms both the successful attack and the failed over-sized attack against local EVM execution. |
 | Docs | Mechanism notes, defense discussion, classroom walkthrough, update log | Supporting material for a course report or presentation. |
@@ -184,6 +184,8 @@ directory is missing, regenerate it with the commands in the next section.
 | `figures/fig_pool_depth.png` | Profit shrinks in deeper pools | Larger reserves dilute price impact. |
 | `figures/fig_fee.png` | Profit collapses when fee becomes high enough | The attacker pays fees twice, on front-run and back-run. |
 | `figures/fig_victim_size.png` | Bigger victim trades create larger opportunities | Large visible swaps are more attractive targets. |
+| `figures/fig_gas.png` | Gross profit can stay positive while net profit disappears | Gas and priority fees decide whether theoretical MEV is executable. |
+| `figures/fig_defense.png` | Mitigations compared side by side | Lower slippage, deeper pools, higher fees, gas costs, and private routing shrink or remove the attack window. |
 
 The two figures below are the best ones to put directly on screen during the
 main explanation.
@@ -203,6 +205,7 @@ dashboard/index.html
 It has no backend and no dependency install step. It recomputes the same CPMM
 sandwich model in JavaScript and shows:
 
+- saved scenario presets for reference, high gas, deep pool, and oversized attack;
 - optimal attacker size or a manually selected attacker size;
 - gross profit, gas cost, net profit, ROI, victim output, `minOut`, and revert status;
 - the attacker-size frontier with the victim `minOut` line;
@@ -221,11 +224,13 @@ Recommended live-demo setup:
 
 During Q&A, use the dashboard in this order:
 
-1. Increase slippage and point out that the feasible attacker window expands.
-2. Increase pool depth and point out that the same victim trade moves price less.
-3. Increase the fee and point out that the attacker pays fees on both legs.
-4. Increase gas units/base fee/priority fee and show gross profit versus net profit.
-5. Disable "Use optimal attacker size", drag attacker size too far, and show the
+1. Click "Reference" and connect the dashboard values to the Rust trace.
+2. Click "High gas" and show gross profit versus net profit.
+3. Click "Deep pool" and point out that the same victim trade moves price less.
+4. Click "Oversized" and show victim revert plus attacker unwind loss.
+5. Manually increase slippage and point out that the feasible attacker window expands.
+6. Increase the fee and point out that the attacker pays fees on both legs.
+7. Disable "Use optimal attacker size", drag attacker size too far, and show the
    victim revert status.
 
 ## Reproduce The Demo
@@ -245,6 +250,7 @@ Generate CSV sweeps:
 ```bash
 cd searcher
 cargo run --release -- sweep --out-dir ../data
+cargo run --release -- defense --out-dir ../data
 ```
 
 Render figures:
@@ -281,78 +287,16 @@ version.
 | 24-27 min | EVM validation | Run `forge test -vv --offline`; point out that Solidity integer math matches Rust within 1%. |
 | 27-30 min | Defenses and extensions | Tie every defense to a broken assumption: visible order, high price impact, low round-trip cost, or strict ordering. |
 
-## Can This Run On A Testnet?
-
-Yes, but it should be framed carefully.
-
-The primary classroom demo is local: Rust plus Foundry gives deterministic
-output and does not depend on public RPC latency, faucet balance, or block
-ordering. A Sepolia version can still demonstrate the mechanism by deploying
-this repo's own `MockERC20` tokens and `MiniAMM`, adding toy liquidity, then
-sending the three transactions in order.
-
-What a testnet demo proves:
-
-- the contracts can be deployed to a public EVM network;
-- the AMM, slippage check, and sandwich transaction sequence work on-chain;
-- transaction ordering affects the victim's execution price.
-
-What it does **not** prove:
-
-- real mainnet MEV profitability;
-- public mempool searcher competition;
-- block builder behavior or bundle inclusion;
-- extraction from real user orderflow.
-
-Use only test wallets and test ETH. Never put a real private key or real funds
-into the demo environment.
-
-Optional script flow:
-
-```bash
-cd contracts
-cp .env.example .env
-# Fill SEPOLIA_RPC_URL and test private keys.
-set -a; source .env; set +a
-
-# Local dry run first. In another terminal, start Anvil:
-anvil --host 127.0.0.1 --port 8545
-
-# Then deploy against the local chain:
-forge script script/DeployDemo.s.sol:DeployDemo --rpc-url http://127.0.0.1:8545 --broadcast
-
-# Sepolia deployment:
-forge script script/DeployDemo.s.sol:DeployDemo --rpc-url "$SEPOLIA_RPC_URL" --broadcast
-
-# After setting TOKEN_X, TOKEN_Y, and AMM_ADDRESS from deployment output:
-forge script script/RunSandwichDemo.s.sol:RunSandwichDemo --rpc-url "$SEPOLIA_RPC_URL" --broadcast
-```
-
-## Supporting Docs
-
-- [`docs/mechanism.md`](docs/mechanism.md): formula-level derivation of the
-  CPMM sandwich payoff and optimizer.
-- [`docs/defense.md`](docs/defense.md): mitigation discussion for users and
-  protocol designers.
-- [`docs/lab_walkthrough.md`](docs/lab_walkthrough.md): earlier classroom
-  walkthrough organized as a live lab.
-- [`docs/update_2026-04-29.md`](docs/update_2026-04-29.md): update log for
-  trace, attacker-size sweep, revert handling, and Foundry logs.
-
 ## Next Features Worth Building
 
-| Priority | Feature | Why it helps |
-| -------- | ------- | ------------ |
-| P0 | Keep README, Rust reference output, and dashboard defaults aligned | Makes the 30-minute presentation reproducible. |
-| P1 | Add gas-aware sweep plots | Shows where gross MEV exists but net profit disappears. |
-| P2 | Add a defense-focused sweep command | Gives one-click comparisons for slippage, fee, and liquidity defenses. |
-| P3 | Expand the dashboard with saved scenarios | Makes classroom Q&A easier when students ask "what if?" questions. |
-| P4 | Add multi-pool or multi-hop routing | Moves the toy model closer to realistic DEX routing. |
-| P5 | Add a mempool ordering / bundle simulator | Makes the gap between local sequencing and production MEV explicit. |
-
-## Scope Notes
-
-This demo intentionally stays small. It models one public AMM pool, one victim
-swap, and one attacker who can force the three-transaction order. That scope is
-enough to explain the core MEV mechanism while keeping the math, code, and
-presentation readable.
+| Status | Feature | Notes |
+| ------ | ------- | ----- |
+| Done | Keep README, Rust reference output, and dashboard defaults aligned | Reference scenario remains `100k/100k`, `0.30%` fee, `1000 X` victim, `1%` slippage; README, Rust CLI, Foundry logs, and dashboard match the same headline values. |
+| Done | Add a Foundry oversized-front-run revert/unwind test | `test_oversized_frontrun_reverts_and_unwinds_at_loss` verifies the `2000 X` front-run makes the victim revert and forces attacker unwind at a loss. |
+| Done | Add gas and priority-fee parameters to Rust | `simulate` and `trace` support `--gas-units`, `--base-fee-gwei`, `--priority-fee-gwei`, and `--native-price-x`; output includes gas cost, net profit, and net ROI. |
+| Done | Add gas-aware dashboard controls | The dashboard shows gross profit, gas cost, and net profit while keeping the same reference scenario defaults. |
+| Done | Add gas-aware sweep plots | `sweep` writes `sweep_gas.csv`, and `analysis/plot.py` renders `fig_gas.png` to show where net profit disappears after gas. |
+| Done | Add a defense-focused sweep command | `cargo run --release -- defense --out-dir ../data` writes `defense_comparison.csv`; full `sweep` also writes it. |
+| Done | Expand the dashboard with saved scenarios | Preset buttons switch between reference, high gas, deep pool, and oversized attacker cases. |
+| Not yet | Add multi-pool or multi-hop routing | Move beyond one CPMM pool to a more realistic DEX routing setup. |
+| Not yet | Add a mempool ordering / bundle simulator | Make the gap between local transaction sequencing and production MEV explicit. |

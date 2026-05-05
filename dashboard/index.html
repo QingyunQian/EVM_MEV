@@ -77,6 +77,29 @@
       top: 12px;
     }
 
+    .presets {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .preset-button {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fbff;
+      color: var(--dark);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .preset-button:hover {
+      border-color: var(--blue);
+      background: #eef6ff;
+    }
+
     .control {
       display: grid;
       gap: 8px;
@@ -287,6 +310,16 @@
 
   <main>
     <aside class="controls panel">
+      <div>
+        <h2>Presets</h2>
+        <div class="presets" aria-label="Scenario presets">
+          <button class="preset-button" type="button" data-preset="reference">Reference</button>
+          <button class="preset-button" type="button" data-preset="highGas">High gas</button>
+          <button class="preset-button" type="button" data-preset="deepPool">Deep pool</button>
+          <button class="preset-button" type="button" data-preset="oversized">Oversized</button>
+        </div>
+      </div>
+
       <div class="toggle">
         <input id="autoOptimal" type="checkbox" checked>
         <label for="autoOptimal">Use optimal attacker size</label>
@@ -319,7 +352,7 @@
 
       <div class="control">
         <label for="baseFee">Base fee <span id="baseFeeValue" class="value"></span></label>
-        <input id="baseFee" type="range" min="0" max="200" step="1" value="0">
+        <input id="baseFee" type="range" min="0" max="30000" step="25" value="0">
       </div>
 
       <div class="control">
@@ -435,6 +468,57 @@
       stateRows: document.getElementById("stateRows"),
       frontier: document.getElementById("frontier"),
       states: document.getElementById("states")
+    };
+
+    const presets = {
+      reference: {
+        autoOptimal: true,
+        victim: 1000,
+        slippage: 1,
+        depth: 100000,
+        fee: 0.3,
+        gasUnits: 0,
+        baseFee: 0,
+        priorityFee: 0,
+        nativePrice: 1,
+        attacker: 507
+      },
+      highGas: {
+        autoOptimal: true,
+        victim: 1000,
+        slippage: 1,
+        depth: 100000,
+        fee: 0.3,
+        gasUnits: 500000,
+        baseFee: 20000,
+        priorityFee: 0,
+        nativePrice: 1,
+        attacker: 507
+      },
+      deepPool: {
+        autoOptimal: true,
+        victim: 1000,
+        slippage: 1,
+        depth: 500000,
+        fee: 0.3,
+        gasUnits: 500000,
+        baseFee: 25,
+        priorityFee: 2,
+        nativePrice: 1,
+        attacker: 507
+      },
+      oversized: {
+        autoOptimal: false,
+        victim: 1000,
+        slippage: 1,
+        depth: 100000,
+        fee: 0.3,
+        gasUnits: 0,
+        baseFee: 0,
+        priorityFee: 0,
+        nativePrice: 1,
+        attacker: 2000
+      }
     };
 
     const fmt = (n, d = 3) => Number.isFinite(n) ? n.toLocaleString("en-US", {
@@ -602,7 +686,7 @@
       ctx.clearRect(0, 0, w, h);
 
       const pad = { l: 58, r: 58, t: 24, b: 46 };
-      const upper = Math.max(best.attackerIn * 2.4, input.victim * 1.5, 1);
+      const upper = Math.max(best.attackerIn * 2.4, selected.attackerIn * 1.1, input.victim * 2.5, 1);
       const rows = [];
       for (let i = 0; i <= 160; i += 1) {
         const a = upper * i / 160;
@@ -724,7 +808,7 @@
     function render() {
       const input = currentInput();
       const best = optimal(input);
-      const maxManual = Math.max(best.attackerIn * 2.4, input.victim * 1.5, 1);
+      const maxManual = Math.max(best.attackerIn * 2.4, Number(els.attacker.value) * 1.1, input.victim * 2.5, 1);
       els.attacker.max = String(Math.ceil(maxManual));
       if (els.autoOptimal.checked) {
         els.attacker.value = String(best.attackerIn);
@@ -781,6 +865,23 @@
       el.addEventListener("input", render);
       el.addEventListener("change", render);
     }
+
+    document.querySelectorAll("[data-preset]").forEach(button => {
+      button.addEventListener("click", () => {
+        const preset = presets[button.dataset.preset];
+        els.autoOptimal.checked = preset.autoOptimal;
+        els.victim.value = String(preset.victim);
+        els.slippage.value = String(preset.slippage);
+        els.depth.value = String(preset.depth);
+        els.fee.value = String(preset.fee);
+        els.gasUnits.value = String(preset.gasUnits);
+        els.baseFee.value = String(preset.baseFee);
+        els.priorityFee.value = String(preset.priorityFee);
+        els.nativePrice.value = String(preset.nativePrice);
+        els.attacker.value = String(preset.attacker);
+        render();
+      });
+    });
 
     render();
   </script>

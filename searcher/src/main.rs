@@ -17,7 +17,8 @@ mod strategy;
 
 use crate::amm::Pool;
 use crate::experiments::{
-    sweep_attacker_size, sweep_fee, sweep_pool_depth, sweep_slippage, sweep_victim_size,
+    defense_comparison, sweep_attacker_size, sweep_fee, sweep_gas_cost, sweep_pool_depth,
+    sweep_slippage, sweep_victim_size, GasSweepConfig,
 };
 use crate::strategy::{optimal_sandwich, simulate, VictimSwap};
 
@@ -104,6 +105,11 @@ enum Cmd {
     },
     /// Run all sweeps and write CSVs into `--out-dir` (default `../data`).
     Sweep {
+        #[arg(long, default_value = "../data")]
+        out_dir: PathBuf,
+    },
+    /// Write the defense comparison CSV into `--out-dir`.
+    Defense {
         #[arg(long, default_value = "../data")]
         out_dir: PathBuf,
     },
@@ -258,7 +264,30 @@ fn main() -> Result<()> {
             let attacker_rows = sweep_attacker_size(pool, reference_victim, 120);
             report::write_csv(&attacker_rows, &out_dir.join("sweep_attacker_size.csv"))?;
 
+            let gas_rows = sweep_gas_cost(
+                pool,
+                reference_victim,
+                GasSweepConfig {
+                    gas_units: 500_000.0,
+                    priority_fee_gwei: 2.0,
+                    native_price_x: 1.0,
+                    base_fee_min: 0.0,
+                    base_fee_max: 30_000.0,
+                    n: 80,
+                },
+            );
+            report::write_csv(&gas_rows, &out_dir.join("sweep_gas.csv"))?;
+
+            let defense_rows = defense_comparison();
+            report::write_csv(&defense_rows, &out_dir.join("defense_comparison.csv"))?;
+
             println!("wrote CSVs to {}", out_dir.display());
+        }
+        Cmd::Defense { out_dir } => {
+            std::fs::create_dir_all(&out_dir)?;
+            let defense_rows = defense_comparison();
+            report::write_csv(&defense_rows, &out_dir.join("defense_comparison.csv"))?;
+            println!("wrote defense comparison to {}", out_dir.display());
         }
     }
     Ok(())

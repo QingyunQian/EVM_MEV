@@ -212,7 +212,6 @@ __marimo__/
 .DS_Store
 
 # Generated intermediate artifacts
-figures/
 data/
 
 # Foundry (contracts/)
@@ -224,4 +223,3 @@ contracts/foundry.lock
 
 # Rust (searcher/)
 searcher/target/
-
