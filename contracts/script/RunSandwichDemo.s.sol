@@ -50,10 +50,7 @@ contract RunSandwichDemo is Script {
         tokenX = MockERC20(vm.envAddress("TOKEN_X"));
         tokenY = MockERC20(vm.envAddress("TOKEN_Y"));
 
-        attackerIn = vm.envOr(
-            "ATTACKER_IN_WAD",
-            uint256(507_044_774_798_056_237_000)
-        );
+        attackerIn = vm.envOr("ATTACKER_IN_WAD", uint256(507_044_774_798_056_237_000));
         victimIn = vm.envOr("VICTIM_IN_WAD", uint256(1_000 * UNIT));
         slippageBps = vm.envOr("SLIPPAGE_BPS", uint256(100));
 
@@ -91,7 +88,10 @@ contract RunSandwichDemo is Script {
         uint256 honestQuote,
         uint256 victimOut,
         uint256 /* backOut */
-    ) internal view {
+    )
+        internal
+        view
+    {
         uint256 attackerXAfter = tokenX.balanceOf(attacker);
         if (attackerXAfter >= attackerXBefore) {
             console2.log("attacker profit X (wad)", attackerXAfter - attackerXBefore);

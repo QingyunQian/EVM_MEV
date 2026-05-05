@@ -124,7 +124,7 @@
 
     .metrics {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 12px;
     }
 
@@ -313,6 +313,26 @@
       </div>
 
       <div class="control">
+        <label for="gasUnits">Gas units <span id="gasUnitsValue" class="value"></span></label>
+        <input id="gasUnits" type="range" min="0" max="800000" step="10000" value="0">
+      </div>
+
+      <div class="control">
+        <label for="baseFee">Base fee <span id="baseFeeValue" class="value"></span></label>
+        <input id="baseFee" type="range" min="0" max="200" step="1" value="0">
+      </div>
+
+      <div class="control">
+        <label for="priorityFee">Priority fee <span id="priorityFeeValue" class="value"></span></label>
+        <input id="priorityFee" type="range" min="0" max="50" step="0.5" value="0">
+      </div>
+
+      <div class="control">
+        <label for="nativePrice">Native token price <span id="nativePriceValue" class="value"></span></label>
+        <input id="nativePrice" type="range" min="0" max="5000" step="25" value="1">
+      </div>
+
+      <div class="control">
         <label for="attacker">Attacker size <span id="attackerValue" class="value"></span></label>
         <input id="attacker" type="range" min="0" max="3000" step="1" value="507">
       </div>
@@ -321,8 +341,16 @@
     <section class="grid">
       <div class="metrics">
         <div class="metric">
-          <span>Attacker profit</span>
+          <span>Gross profit</span>
           <strong id="profit"></strong>
+        </div>
+        <div class="metric">
+          <span>Net profit</span>
+          <strong id="netProfit"></strong>
+        </div>
+        <div class="metric">
+          <span>Gas cost</span>
+          <strong id="gasCost"></strong>
         </div>
         <div class="metric">
           <span>Attacker ROI</span>
@@ -384,13 +412,23 @@
       slippage: document.getElementById("slippage"),
       depth: document.getElementById("depth"),
       fee: document.getElementById("fee"),
+      gasUnits: document.getElementById("gasUnits"),
+      baseFee: document.getElementById("baseFee"),
+      priorityFee: document.getElementById("priorityFee"),
+      nativePrice: document.getElementById("nativePrice"),
       attacker: document.getElementById("attacker"),
       victimValue: document.getElementById("victimValue"),
       slippageValue: document.getElementById("slippageValue"),
       depthValue: document.getElementById("depthValue"),
       feeValue: document.getElementById("feeValue"),
+      gasUnitsValue: document.getElementById("gasUnitsValue"),
+      baseFeeValue: document.getElementById("baseFeeValue"),
+      priorityFeeValue: document.getElementById("priorityFeeValue"),
+      nativePriceValue: document.getElementById("nativePriceValue"),
       attackerValue: document.getElementById("attackerValue"),
       profit: document.getElementById("profit"),
+      netProfit: document.getElementById("netProfit"),
+      gasCost: document.getElementById("gasCost"),
       roi: document.getElementById("roi"),
       victimOut: document.getElementById("victimOut"),
       status: document.getElementById("status"),
@@ -443,6 +481,8 @@
           frontOut: 0,
           backOut: 0,
           profit: 0,
+          gasCost: 0,
+          netProfit: 0,
           roi: 0,
           honestOut,
           minOut,
@@ -456,18 +496,22 @@
       const p = { ...start };
       const frontOut = swapXForY(p, attackerIn);
       states.push({ step: "1", action: "front-run", x: p.x, y: p.y, price: p.y / p.x });
+      const gasCost = input.gasUnits * (input.baseFeeGwei + input.priorityFeeGwei) * 1e-9 * input.nativePriceX;
 
       const victimPreview = previewXForY(p, input.victim);
       if (victimPreview < minOut) {
         states.push({ step: "2", action: "victim reverts", x: p.x + 0, y: p.y + 0, price: p.y / p.x });
         const backOut = swapYForX(p, frontOut);
+        const profit = backOut - attackerIn;
         states.push({ step: "3", action: "unwind", x: p.x, y: p.y, price: p.y / p.x });
         return {
           attackerIn,
           frontOut,
           backOut,
-          profit: backOut - attackerIn,
-          roi: (backOut - attackerIn) / attackerIn,
+          profit,
+          gasCost,
+          netProfit: profit - gasCost,
+          roi: profit / attackerIn,
           honestOut,
           minOut,
           victimActual: victimPreview,
@@ -480,13 +524,16 @@
       const victimActual = swapXForY(p, input.victim);
       states.push({ step: "2", action: "victim", x: p.x, y: p.y, price: p.y / p.x });
       const backOut = swapYForX(p, frontOut);
+      const profit = backOut - attackerIn;
       states.push({ step: "3", action: "back-run", x: p.x, y: p.y, price: p.y / p.x });
       return {
         attackerIn,
         frontOut,
         backOut,
-        profit: backOut - attackerIn,
-        roi: (backOut - attackerIn) / attackerIn,
+        profit,
+        gasCost,
+        netProfit: profit - gasCost,
+        roi: profit / attackerIn,
         honestOut,
         minOut,
         victimActual,
@@ -531,7 +578,7 @@
       }
 
       const best = simulate(input, (lo + hi) / 2);
-      return best.profit > 0 && !best.reverted ? best : simulate(input, 0);
+      return best.netProfit > 0 && !best.reverted ? best : simulate(input, 0);
     }
 
     function currentInput() {
@@ -539,7 +586,11 @@
         victim: Number(els.victim.value),
         slippage: Number(els.slippage.value) / 100,
         depth: Number(els.depth.value),
-        fee: Number(els.fee.value) / 100
+        fee: Number(els.fee.value) / 100,
+        gasUnits: Number(els.gasUnits.value),
+        baseFeeGwei: Number(els.baseFee.value),
+        priorityFeeGwei: Number(els.priorityFee.value),
+        nativePriceX: Number(els.nativePrice.value)
       };
     }
 
@@ -685,10 +736,17 @@
       els.slippageValue.textContent = `${fmt(input.slippage * 100, 2)}%`;
       els.depthValue.textContent = `${fmt(input.depth, 0)} / side`;
       els.feeValue.textContent = `${fmt(input.fee * 100, 2)}%`;
+      els.gasUnitsValue.textContent = fmt(input.gasUnits, 0);
+      els.baseFeeValue.textContent = `${fmt(input.baseFeeGwei, 1)} gwei`;
+      els.priorityFeeValue.textContent = `${fmt(input.priorityFeeGwei, 1)} gwei`;
+      els.nativePriceValue.textContent = `${fmt(input.nativePriceX, 0)} X/ETH`;
       els.attackerValue.textContent = `${fmt(selected.attackerIn, 3)} X`;
 
       els.profit.textContent = `${fmt(selected.profit, 6)} X`;
       els.profit.className = selected.profit >= 0 ? "ok" : "bad";
+      els.netProfit.textContent = `${fmt(selected.netProfit, 6)} X`;
+      els.netProfit.className = selected.netProfit >= 0 ? "ok" : "bad";
+      els.gasCost.textContent = `${fmt(selected.gasCost, 6)} X`;
       els.roi.textContent = selected.attackerIn > 0 ? `${fmt(selected.roi * 100, 4)}%` : "0.0000%";
       els.victimOut.textContent = `${fmt(selected.victimActual, 6)} Y`;
       els.status.textContent = selected.reverted ? "reverted" : "executes";
@@ -708,7 +766,18 @@
       drawStates(selected);
     }
 
-    for (const el of [els.autoOptimal, els.victim, els.slippage, els.depth, els.fee, els.attacker]) {
+    for (const el of [
+      els.autoOptimal,
+      els.victim,
+      els.slippage,
+      els.depth,
+      els.fee,
+      els.gasUnits,
+      els.baseFee,
+      els.priorityFee,
+      els.nativePrice,
+      els.attacker
+    ]) {
       el.addEventListener("input", render);
       el.addEventListener("change", render);
     }

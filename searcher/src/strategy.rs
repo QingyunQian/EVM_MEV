@@ -202,7 +202,10 @@ mod tests {
     #[test]
     fn no_frontrun_is_zero_profit() {
         let pool = Pool::new(10_000.0, 10_000.0, 0.003);
-        let v = VictimSwap { v: 100.0, slippage: 0.01 };
+        let v = VictimSwap {
+            v: 100.0,
+            slippage: 0.01,
+        };
         let o = simulate(&pool, &v, 0.0);
         assert_relative_eq!(o.attacker_profit, 0.0);
         assert!(!o.reverted);
@@ -211,7 +214,10 @@ mod tests {
     #[test]
     fn extreme_frontrun_reverts_victim() {
         let pool = Pool::new(10_000.0, 10_000.0, 0.003);
-        let v = VictimSwap { v: 100.0, slippage: 0.005 };
+        let v = VictimSwap {
+            v: 100.0,
+            slippage: 0.005,
+        };
         let o = simulate(&pool, &v, 5_000.0);
         assert!(o.reverted);
     }
@@ -219,7 +225,10 @@ mod tests {
     #[test]
     fn optimal_is_nonnegative_for_typical_case() {
         let pool = Pool::new(100_000.0, 100_000.0, 0.003);
-        let v = VictimSwap { v: 1_000.0, slippage: 0.01 };
+        let v = VictimSwap {
+            v: 1_000.0,
+            slippage: 0.01,
+        };
         let o = optimal_sandwich(&pool, &v);
         assert!(o.attacker_profit >= 0.0);
         assert!(!o.reverted);
@@ -228,8 +237,20 @@ mod tests {
     #[test]
     fn tighter_slippage_shrinks_profit() {
         let pool = Pool::new(100_000.0, 100_000.0, 0.003);
-        let loose = optimal_sandwich(&pool, &VictimSwap { v: 1_000.0, slippage: 0.02 });
-        let tight = optimal_sandwich(&pool, &VictimSwap { v: 1_000.0, slippage: 0.002 });
+        let loose = optimal_sandwich(
+            &pool,
+            &VictimSwap {
+                v: 1_000.0,
+                slippage: 0.02,
+            },
+        );
+        let tight = optimal_sandwich(
+            &pool,
+            &VictimSwap {
+                v: 1_000.0,
+                slippage: 0.002,
+            },
+        );
         assert!(loose.attacker_profit >= tight.attacker_profit);
     }
 }

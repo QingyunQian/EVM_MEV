@@ -54,12 +54,12 @@ reverts and the sandwich fails.
 
 | Area | Implemented content | Demo value |
 | ---- | ------------------- | ---------- |
-| Rust simulator | CPMM math, victim slippage, fixed-size sandwich simulation, optimal attacker-size search, failure unwind, CLI commands | Shows the mechanism and the optimal trade size numerically. |
+| Rust simulator | CPMM math, victim slippage, fixed-size sandwich simulation, optimal attacker-size search, failure unwind, gas/priority-fee accounting, CLI commands | Shows the mechanism, optimal trade size, and executable profit after gas. |
 | Rust trace | `trace` command prints the ordered pool states | Best live demo for explaining the three-transaction sequence. |
 | Rust sweeps | Victim size, slippage, pool depth, fee, attacker size | Produces the data behind the classroom figures. |
 | Python plots | Five PNG figures generated from sweep CSVs | Converts the attack into visual stories. |
 | Solidity contracts | `MiniAMM` and `MockERC20` | Small EVM version of the same AMM. |
-| Foundry tests | Honest swap test and sandwich profit cross-check | Confirms the Rust result against local EVM execution. |
+| Foundry tests | Honest swap test, profitable sandwich cross-check, oversized revert/unwind test | Confirms both the successful attack and the failed over-sized attack against local EVM execution. |
 | Docs | Mechanism notes, defense discussion, classroom walkthrough, update log | Supporting material for a course report or presentation. |
 
 Repository layout:
@@ -98,6 +98,8 @@ The optimized sandwich result is:
 | Victim honest output | `987.158034 Y` |
 | Victim actual output | `977.286454 Y` |
 | Victim extra loss | `9.871580 Y` |
+| Gas cost | `0 X` by default, configurable in CLI/dashboard |
+| Net executable profit | `7.016249 X` before gas costs |
 
 The victim's extra loss is almost exactly the 1% slippage budget. That is the
 main lesson: loose slippage creates a feasible profit window, and the rational
@@ -142,6 +144,34 @@ This demonstrates the revert boundary: once the victim output falls below
 `minOut`, the victim does not execute, and the attacker must unwind the failed
 front-run.
 
+To show why theoretical MEV is not the same as executable profit, add a gas
+model. The output prints both gross profit and net profit:
+
+```bash
+cd searcher
+cargo run --release -- simulate \
+  --victim 1000 \
+  --slippage 0.01 \
+  --gas-units 500000 \
+  --base-fee-gwei 25 \
+  --priority-fee-gwei 2 \
+  --native-price-x 1
+```
+
+Gas cost is modeled as:
+
+```text
+gas_cost_x = gas_units * (base_fee_gwei + priority_fee_gwei) * 1e-9 * native_price_x
+net_profit_x = gross_profit_x - gas_cost_x
+```
+
+The model is intentionally simple: gas is treated as a fixed cost for the
+bundle, and `native_price_x` converts the gas token into token X units. When
+`--attacker` is omitted, the Rust CLI treats gas as a hurdle and returns
+`attacker_in = 0` if the best gross sandwich would be net negative after gas.
+When `--attacker` is supplied manually, the CLI prints that fixed attack's net
+profit or loss.
+
 ## Figures To Show In Class
 
 The figures are generated outputs, not hand-drawn slides. If the `figures/`
@@ -174,7 +204,7 @@ It has no backend and no dependency install step. It recomputes the same CPMM
 sandwich model in JavaScript and shows:
 
 - optimal attacker size or a manually selected attacker size;
-- attacker profit, ROI, victim output, `minOut`, and revert status;
+- gross profit, gas cost, net profit, ROI, victim output, `minOut`, and revert status;
 - the attacker-size frontier with the victim `minOut` line;
 - the three-step pool state after front-run, victim swap, and back-run.
 
@@ -194,7 +224,8 @@ During Q&A, use the dashboard in this order:
 1. Increase slippage and point out that the feasible attacker window expands.
 2. Increase pool depth and point out that the same victim trade moves price less.
 3. Increase the fee and point out that the attacker pays fees on both legs.
-4. Disable "Use optimal attacker size", drag attacker size too far, and show the
+4. Increase gas units/base fee/priority fee and show gross profit versus net profit.
+5. Disable "Use optimal attacker size", drag attacker size too far, and show the
    victim revert status.
 
 ## Reproduce The Demo
@@ -206,6 +237,7 @@ cd searcher
 cargo test --release
 cargo run --release -- simulate --victim 1000 --slippage 0.01
 cargo run --release -- trace --victim 1000 --slippage 0.01
+cargo run --release -- simulate --victim 1000 --slippage 0.01 --gas-units 500000 --base-fee-gwei 25 --priority-fee-gwei 2 --native-price-x 1
 ```
 
 Generate CSV sweeps:
@@ -311,12 +343,12 @@ forge script script/RunSandwichDemo.s.sol:RunSandwichDemo --rpc-url "$SEPOLIA_RP
 
 | Priority | Feature | Why it helps |
 | -------- | ------- | ------------ |
-| P0 | Keep README and dashboard aligned with the reference scenario | Makes the 30-minute presentation reproducible. |
-| P1 | Add a Foundry oversized-front-run revert/unwind test | Mirrors the Rust failure demo on EVM. |
-| P2 | Add gas and priority-fee parameters to Rust | Separates theoretical profit from executable profit. |
-| P3 | Add a defense-focused sweep command | Gives one-click comparisons for slippage, fee, and liquidity defenses. |
-| P4 | Expand the dashboard with saved scenarios | Makes classroom Q&A easier when students ask "what if?" questions. |
-| P5 | Add multi-pool or multi-hop routing | Moves the toy model closer to realistic DEX routing. |
+| P0 | Keep README, Rust reference output, and dashboard defaults aligned | Makes the 30-minute presentation reproducible. |
+| P1 | Add gas-aware sweep plots | Shows where gross MEV exists but net profit disappears. |
+| P2 | Add a defense-focused sweep command | Gives one-click comparisons for slippage, fee, and liquidity defenses. |
+| P3 | Expand the dashboard with saved scenarios | Makes classroom Q&A easier when students ask "what if?" questions. |
+| P4 | Add multi-pool or multi-hop routing | Moves the toy model closer to realistic DEX routing. |
+| P5 | Add a mempool ordering / bundle simulator | Makes the gap between local sequencing and production MEV explicit. |
 
 ## Scope Notes
 

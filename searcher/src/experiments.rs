@@ -47,7 +47,11 @@ pub struct AttackCurveRow {
 
 fn row(scenario: &str, pool: &Pool, v: &VictimSwap) -> SweepRow {
     let o = optimal_sandwich(pool, v);
-    let roi = if o.attacker_in > 0.0 { o.attacker_profit / o.attacker_in } else { 0.0 };
+    let roi = if o.attacker_in > 0.0 {
+        o.attacker_profit / o.attacker_in
+    } else {
+        0.0
+    };
     SweepRow {
         scenario: scenario.to_string(),
         pool_x: pool.x,
@@ -70,7 +74,13 @@ fn row(scenario: &str, pool: &Pool, v: &VictimSwap) -> SweepRow {
 }
 
 /// Sweep victim trade size from `v_min` to `v_max` with `n` log-spaced points.
-pub fn sweep_victim_size(pool: Pool, slippage: f64, v_min: f64, v_max: f64, n: usize) -> Vec<SweepRow> {
+pub fn sweep_victim_size(
+    pool: Pool,
+    slippage: f64,
+    v_min: f64,
+    v_max: f64,
+    n: usize,
+) -> Vec<SweepRow> {
     logspace(v_min, v_max, n)
         .into_iter()
         .map(|v| row("victim_size", &pool, &VictimSwap { v, slippage }))
@@ -86,12 +96,26 @@ pub fn sweep_slippage(pool: Pool, v: f64, s_min: f64, s_max: f64, n: usize) -> V
 }
 
 /// Sweep pool depth, keeping price at 1 X = 1 Y and all other params fixed.
-pub fn sweep_pool_depth(fee: f64, victim_v: f64, slippage: f64, d_min: f64, d_max: f64, n: usize) -> Vec<SweepRow> {
+pub fn sweep_pool_depth(
+    fee: f64,
+    victim_v: f64,
+    slippage: f64,
+    d_min: f64,
+    d_max: f64,
+    n: usize,
+) -> Vec<SweepRow> {
     logspace(d_min, d_max, n)
         .into_iter()
         .map(|d| {
             let p = Pool::new(d, d, fee);
-            row("pool_depth", &p, &VictimSwap { v: victim_v, slippage })
+            row(
+                "pool_depth",
+                &p,
+                &VictimSwap {
+                    v: victim_v,
+                    slippage,
+                },
+            )
         })
         .collect()
 }
@@ -101,7 +125,14 @@ pub fn sweep_fee(x: f64, y: f64, victim_v: f64, slippage: f64, fees: &[f64]) -> 
     fees.iter()
         .map(|&f| {
             let p = Pool::new(x, y, f);
-            row("fee", &p, &VictimSwap { v: victim_v, slippage })
+            row(
+                "fee",
+                &p,
+                &VictimSwap {
+                    v: victim_v,
+                    slippage,
+                },
+            )
         })
         .collect()
 }
