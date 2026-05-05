@@ -1,4 +1,4 @@
-# Sandwich MEV Classroom Demo
+# EVM Sandwich Maximum Extractable Value (MEV) Simulator
 
 [![Rust](https://img.shields.io/badge/Rust-simulator-orange)](searcher/)
 [![Foundry](https://img.shields.io/badge/Foundry-EVM%20tests-black)](contracts/)
@@ -6,17 +6,27 @@
 [![Coverage](https://img.shields.io/badge/coverage-model%20%2B%20EVM%20tests-blue)](#test-coverage)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-This repository is a teaching demo for sandwich MEV on a Uniswap-V2-style
-constant-product AMM. It shows the mechanism in three layers:
+Maximum Extractable Value (MEV) is the value that searchers, builders, or
+validators can extract by changing transaction ordering, inserting their own
+transactions, or reacting to visible pending trades. This repository focuses on
+one concrete MEV pattern: the sandwich attack.
+
+The project demonstrates sandwich MEV on Ethereum Virtual Machine
+(EVM)-compatible chains, using a Uniswap-V2-style constant-product AMM as the
+execution model. It is chain-agnostic for EVM networks rather than wired to one
+live deployment; the Solidity validation runs on a local Foundry EVM with mock
+tokens and a minimal AMM.
+
+The repo provides three connected layers:
 
 - a Rust simulator that computes and traces the optimal sandwich;
 - a Python analysis script that turns parameter sweeps into figures;
 - a Foundry project that reproduces the same attack on a local EVM.
 
 It is **not** a production MEV searcher. It does not monitor a real mempool,
-send Flashbots bundles, compete in priority-fee auctions, or execute against
-mainnet liquidity. Its purpose is to make the mechanism visible enough for a
-30-minute classroom presentation.
+send bundles, compete in priority-fee auctions, or execute against mainnet
+liquidity. Its purpose is to make the economics and execution path of a
+sandwich attack inspectable and reproducible.
 
 ## One-Screen Intuition
 
@@ -56,24 +66,24 @@ The attacker chooses a front-run size that pushes the victim close to `minOut`
 without crossing it. If the attacker pushes too hard, the victim transaction
 reverts and the sandwich fails.
 
-## What Is Already Implemented
+## Features
 
-| Area | Implemented content | Demo value |
-| ---- | ------------------- | ---------- |
-| Rust simulator | CPMM math, victim slippage, fixed-size sandwich simulation, optimal attacker-size search, failure unwind, gas/priority-fee accounting, multi-hop route comparison, bundle/order comparison, CLI commands | Shows the mechanism, optimal trade size, executable profit after gas, and why routing/order placement changes MEV feasibility. |
-| Rust trace | `trace` command prints the ordered pool states | Best live demo for explaining the three-transaction sequence. |
-| Rust sweeps | Victim size, slippage, pool depth, fee, attacker size, gas cost, defense comparison | Produces the data behind the classroom figures. |
-| Python plots | Seven PNG figures generated from sweep CSVs | Converts the attack into visual stories. |
-| Solidity contracts | `MiniAMM` and `MockERC20` | Small EVM version of the same AMM. |
-| Foundry tests | Honest swap test, profitable sandwich cross-check, oversized revert/unwind test | Confirms both the successful attack and the failed over-sized attack against local EVM execution. |
-| Docs | Mechanism notes, defense discussion, classroom walkthrough, update log | Supporting material for a course report or presentation. |
+| Area | Implemented content | What it provides |
+| ---- | ------------------- | ---------------- |
+| Rust simulator | CPMM math, victim slippage, fixed-size sandwich simulation, optimal attacker-size search, failure unwind, gas/priority-fee accounting, multi-hop route comparison, bundle/order comparison, CLI commands | Shows the mechanism, optimal trade size, executable profit after gas, and why routing or transaction order changes MEV feasibility. |
+| Rust trace | `trace` command prints the ordered pool states | Makes the three-transaction path visible: attacker front-run, victim swap, attacker back-run. |
+| Rust sweeps | Victim size, slippage, pool depth, fee, attacker size, gas cost, defense comparison | Produces the data behind the figures and sensitivity analysis. |
+| Python plots | Seven PNG figures generated from sweep CSVs | Converts simulation output into visual explanations of profit, loss, gas, liquidity, and defenses. |
+| Solidity contracts | `MiniAMM` and `MockERC20` | Provides a minimal EVM version of the same AMM model. |
+| Foundry tests | Honest swap test, profitable sandwich cross-check, oversized revert/unwind test | Confirms both successful and failed sandwich outcomes against local EVM execution. |
+| Docs and notebook | Mechanism notes, defense discussion, walkthrough, update log, final notebook | Provides written explanations and a reproducible analysis flow. |
 
 Repository layout:
 
 ```text
 EVM_MEV/
   searcher/     Rust simulator, optimizer, trace command, sweep runner
-  contracts/    Foundry project with MiniAMM, mock tokens, tests, demo scripts
+  contracts/    Foundry project with MiniAMM, mock tokens, tests, scripts
   analysis/     Python plotting script
   data/         Generated CSV sweep outputs
   figures/      Generated PNG figures
@@ -180,8 +190,7 @@ profit or loss.
 
 ## Key Figures
 
-These figures are the main visual evidence for the sandwich MEV
-story.
+These figures are the main visual evidence for the sandwich MEV mechanism.
 
 ### Attacker Size Frontier
 
@@ -220,16 +229,6 @@ profit can remain positive while gas and priority fees make net profit zero or
 negative. The key meaning is that a profitable-looking opportunity may not be
 rational to execute after transaction costs.
 
-### Defense Comparison
-
-![Defense comparison](figures/fig_defense.png)
-
-This figure compares mitigation ideas side by side. Lower slippage, deeper
-liquidity, higher fees, gas costs, and private routing all shrink the attack
-window in different ways. The key meaning is that no single chart is needed to
-claim "MEV disappears"; each defense changes the attacker's economics or
-visibility.
-
 ## Interactive Dashboard
 
 Open the static dashboard in a browser:
@@ -251,7 +250,7 @@ Then visit:
 http://127.0.0.1:8000/dashboard/
 ```
 
-The dashboard is an interactive explanation tool, not a separate backend app.
+The dashboard is an interactive analysis tool, not a separate backend app.
 It recomputes the same CPMM sandwich model in JavaScript and shows:
 
 - saved scenario presets for reference, high gas, deep pool, and oversized attack;
@@ -261,11 +260,10 @@ It recomputes the same CPMM sandwich model in JavaScript and shows:
 - the three-step pool state after front-run, victim swap, and back-run;
 - the pool price path and step-candle chart with MEV buy/sell markers for explaining price movement.
 
-Use it after the Rust trace when the audience understands the basic sequence:
-move one parameter at a time, then connect the curve movement back to the
-slippage and price-impact story.
+Use it with the Rust trace to inspect one parameter at a time, then connect the
+curve movement back to slippage and price impact.
 
-## Reproduce The Demo
+## Reproduce The Results
 
 Rust tests and reference trace:
 
@@ -285,7 +283,7 @@ cargo run --release -- sweep --out-dir ../data
 cargo run --release -- defense --out-dir ../data
 ```
 
-Run the route and bundle/order demos:
+Run the route and bundle/order scenarios:
 
 ```bash
 cd searcher
@@ -318,12 +316,11 @@ forge test -vv --offline
 
 The `--offline` flag avoids Foundry's optional online signature lookup. In this
 environment, plain `forge test -vv` can compile successfully and then fail in
-Foundry's network/proxy path; the offline command is the stable classroom
-version.
+Foundry's network/proxy path; the offline command is the stable local version.
 
 ## Test Coverage
 
-This repo uses a focused teaching test suite rather than a hosted coverage
+This repo uses a focused test suite rather than a hosted coverage
 percentage. The important behaviors are covered in the two executable layers:
 
 - `searcher/`: Rust unit tests cover CPMM swap math, quote/swap consistency,
@@ -343,10 +340,10 @@ forge test -vv --offline
 
 ## Repository Architecture
 
-The repo is organized as a small teaching pipeline: the Rust simulator owns the
+The repo is organized as a small analysis pipeline: the Rust simulator owns the
 reference sandwich model, generated CSVs and figures turn that model into
-presentation material, and the Foundry project cross-checks the same mechanism
-on a local EVM.
+visual outputs, and the Foundry project cross-checks the same mechanism on a
+local EVM.
 
 ```text
 searcher/  ->  data/  ->  analysis/plot.py  ->  figures/
@@ -360,14 +357,12 @@ searcher/  ->  data/  ->  analysis/plot.py  ->  figures/
 | Core AMM model | `searcher/src/amm.rs` | Implements Uniswap-V2-style constant-product swap math, fees, quotes, and reserve updates. |
 | Sandwich logic | `searcher/src/strategy.rs` | Computes victim `minOut`, simulates front-run/victim/back-run order, detects reverts, and searches for the best attacker size. |
 | CLI and experiments | `searcher/src/main.rs`, `searcher/src/experiments.rs`, `searcher/src/report.rs` | Exposes `simulate`, `trace`, `sweep`, `defense`, `route`, and `bundle`; writes CSV outputs for analysis. |
-| Analysis outputs | `data/`, `analysis/plot.py`, `figures/` | Stores sweep results and renders the classroom PNG charts. |
-| Interactive demo | `dashboard/index.html` | Static browser dashboard that recomputes the same CPMM model for live parameter changes. |
+| Analysis outputs | `data/`, `analysis/plot.py`, `figures/` | Stores sweep results and renders the PNG charts. |
+| Interactive dashboard | `dashboard/index.html` | Static browser dashboard that recomputes the same CPMM model for live parameter changes. |
 | EVM validation | `contracts/src/`, `contracts/test/`, `contracts/script/` | Minimal Solidity AMM/token contracts plus Foundry tests and scripts that reproduce the sandwich scenarios locally. |
-| Teaching material | `docs/`, `README.md`, `Final_Lab_Sandwich_MEV_EN.ipynb` | Mechanism notes, defenses, walkthrough material, and notebook flow for the final lab. |
+| Documentation and notebook | `docs/`, `README.md`, `Final_Lab_Sandwich_MEV_EN.ipynb` | Mechanism notes, defenses, walkthrough material, and reproducible notebook flow. |
 
 ## License
 
 This project is released under the MIT License. See `LICENSE` for the full
 license text.
-
-Copyright (c) 2026 QingyunQian.
