@@ -54,7 +54,7 @@ reverts and the sandwich fails.
 
 | Area | Implemented content | Demo value |
 | ---- | ------------------- | ---------- |
-| Rust simulator | CPMM math, victim slippage, fixed-size sandwich simulation, optimal attacker-size search, failure unwind, gas/priority-fee accounting, CLI commands | Shows the mechanism, optimal trade size, and executable profit after gas. |
+| Rust simulator | CPMM math, victim slippage, fixed-size sandwich simulation, optimal attacker-size search, failure unwind, gas/priority-fee accounting, multi-hop route comparison, bundle/order comparison, CLI commands | Shows the mechanism, optimal trade size, executable profit after gas, and why routing/order placement changes MEV feasibility. |
 | Rust trace | `trace` command prints the ordered pool states | Best live demo for explaining the three-transaction sequence. |
 | Rust sweeps | Victim size, slippage, pool depth, fee, attacker size, gas cost, defense comparison | Produces the data behind the classroom figures. |
 | Python plots | Seven PNG figures generated from sweep CSVs | Converts the attack into visual stories. |
@@ -202,14 +202,28 @@ Open the static dashboard in a browser:
 dashboard/index.html
 ```
 
-It has no backend and no dependency install step. It recomputes the same CPMM
-sandwich model in JavaScript and shows:
+If typing `dashboard/index.html` into the browser address bar opens a blank or
+missing page, open it from the repository root instead:
+
+```bash
+python3 -m http.server 8000
+```
+
+Then visit:
+
+```text
+http://127.0.0.1:8000/dashboard/
+```
+
+The dashboard is an interactive explanation tool, not a separate backend app.
+It recomputes the same CPMM sandwich model in JavaScript and shows:
 
 - saved scenario presets for reference, high gas, deep pool, and oversized attack;
 - optimal attacker size or a manually selected attacker size;
 - gross profit, gas cost, net profit, ROI, victim output, `minOut`, and revert status;
 - the attacker-size frontier with the victim `minOut` line;
-- the three-step pool state after front-run, victim swap, and back-run.
+- the three-step pool state after front-run, victim swap, and back-run;
+- the pool price path and step-candle chart with MEV buy/sell markers for explaining price movement.
 
 Use it after the Rust trace when the audience understands the basic sequence:
 move one parameter at a time, then connect the curve movement back to the
@@ -253,6 +267,20 @@ cargo run --release -- sweep --out-dir ../data
 cargo run --release -- defense --out-dir ../data
 ```
 
+Run the route and bundle/order demos:
+
+```bash
+cd searcher
+cargo run --release -- route
+cargo run --release -- bundle
+```
+
+`route` compares the reference direct `X -> Y` pool with a two-hop
+`X -> M -> Y` route where the attacker sandwiches the first hop and the victim
+checks `minOut` on final `Y` output. `bundle` compares honest execution,
+profitable sandwich ordering, oversized front-run with unwind, and victim-first
+ordering.
+
 Render figures:
 
 ```bash
@@ -285,18 +313,18 @@ version.
 | 15-20 min | Success vs failure | Run the oversized attacker example; then show `fig_attacker_size.png`. |
 | 20-24 min | Parameter sweeps | Show slippage, pool depth, fee, and victim-size figures in that order. |
 | 24-27 min | EVM validation | Run `forge test -vv --offline`; point out that Solidity integer math matches Rust within 1%. |
-| 27-30 min | Defenses and extensions | Tie every defense to a broken assumption: visible order, high price impact, low round-trip cost, or strict ordering. |
+| 27-30 min | Defenses and extensions | Run `route` and `bundle`; tie every defense to a broken assumption: visible order, high price impact, low round-trip cost, route choice, or strict ordering. |
 
-## Next Features Worth Building
+## Implemented Extension Demos
 
-| Status | Feature | Notes |
-| ------ | ------- | ----- |
-| Done | Keep README, Rust reference output, and dashboard defaults aligned | Reference scenario remains `100k/100k`, `0.30%` fee, `1000 X` victim, `1%` slippage; README, Rust CLI, Foundry logs, and dashboard match the same headline values. |
-| Done | Add a Foundry oversized-front-run revert/unwind test | `test_oversized_frontrun_reverts_and_unwinds_at_loss` verifies the `2000 X` front-run makes the victim revert and forces attacker unwind at a loss. |
-| Done | Add gas and priority-fee parameters to Rust | `simulate` and `trace` support `--gas-units`, `--base-fee-gwei`, `--priority-fee-gwei`, and `--native-price-x`; output includes gas cost, net profit, and net ROI. |
-| Done | Add gas-aware dashboard controls | The dashboard shows gross profit, gas cost, and net profit while keeping the same reference scenario defaults. |
-| Done | Add gas-aware sweep plots | `sweep` writes `sweep_gas.csv`, and `analysis/plot.py` renders `fig_gas.png` to show where net profit disappears after gas. |
-| Done | Add a defense-focused sweep command | `cargo run --release -- defense --out-dir ../data` writes `defense_comparison.csv`; full `sweep` also writes it. |
-| Done | Expand the dashboard with saved scenarios | Preset buttons switch between reference, high gas, deep pool, and oversized attacker cases. |
-| Not yet | Add multi-pool or multi-hop routing | Move beyond one CPMM pool to a more realistic DEX routing setup. |
-| Not yet | Add a mempool ordering / bundle simulator | Make the gap between local transaction sequencing and production MEV explicit. |
+These are available for Q&A or bonus slides after the main 30-minute flow:
+
+| Feature | Command or file | What it demonstrates |
+| ------- | --------------- | -------------------- |
+| Gas-aware execution | `cargo run --release -- simulate --gas-units 500000 --base-fee-gwei 25 --priority-fee-gwei 2 --native-price-x 1` | Gross MEV can be positive while executable net profit is smaller or negative. |
+| Gas-aware sweep plot | `figures/fig_gas.png` | Increasing base fee eventually removes the profitable attack window. |
+| Defense sweep | `cargo run --release -- defense --out-dir ../data` | Slippage, depth, fees, gas, and private routing are compared with one reference scenario. |
+| Saved dashboard scenarios | `dashboard/index.html` | Reference, high-gas, deep-pool, and oversized-attack cases can be switched live; charts show frontier, price path, and step candles with attacker buy/sell markers. |
+| Multi-hop route demo | `cargo run --release -- route` | Routing through multiple pools changes where price impact occurs and where the victim's `minOut` is checked. |
+| Bundle/order demo | `cargo run --release -- bundle` | The same transactions have different outcomes under honest, sandwich, oversized, and victim-first ordering. |
+| Oversized EVM failure test | `contracts/test/MiniAMM.t.sol` | Foundry verifies that an oversized front-run makes the victim revert and leaves the attacker unwinding at a loss. |
