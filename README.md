@@ -258,7 +258,7 @@ It recomputes the same CPMM sandwich model in JavaScript and shows:
 - gross profit, gas cost, net profit, ROI, victim output, `minOut`, and revert status;
 - the attacker-size frontier with the victim `minOut` line;
 - the three-step pool state after front-run, victim swap, and back-run;
-- the pool price path and step-candle chart with MEV buy/sell markers for explaining price movement.
+- the pool price path and step-candle chart with MEV buy/sell markers for explaining price movement. The dashboard price charts use `X/Y`, meaning the price of token `Y` denominated in token `X`, so an attacker `X -> Y` buy pushes the displayed Y price upward. The candle chart is a presentation view: each MEV transaction is one event candle, while background candles and wicks are generated to make the attack visually readable.
 
 Use it with the Rust trace to inspect one parameter at a time, then connect the
 curve movement back to slippage and price impact.

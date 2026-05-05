@@ -100,9 +100,22 @@
       background: #eef6ff;
     }
 
+    .preset-button.active {
+      border-color: var(--blue);
+      background: #e7f1ff;
+      box-shadow: inset 0 0 0 1px var(--blue);
+    }
+
     .control {
       display: grid;
       gap: 8px;
+    }
+
+    .control-fields {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 96px;
+      gap: 10px;
+      align-items: center;
     }
 
     label {
@@ -119,10 +132,56 @@
       accent-color: var(--blue);
     }
 
+    input[type="number"] {
+      width: 100%;
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 4px 7px;
+      color: var(--dark);
+      font: inherit;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+    }
+
     .value {
       color: var(--muted);
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
+    }
+
+    .hint,
+    .chart-summary,
+    .scenario-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .scenario-note {
+      border-left: 4px solid var(--blue);
+      background: #f8fbff;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     .toggle {
@@ -299,6 +358,10 @@
         font-size: 12px;
       }
 
+      .control-fields {
+        grid-template-columns: 1fr;
+      }
+
       .state-table th,
       .state-table td {
         padding: 7px 5px;
@@ -309,7 +372,7 @@
 <body>
   <header>
     <h1>Sandwich MEV Dashboard</h1>
-    <p>Constant-product AMM simulator for the classroom demo. The default values match the Rust reference scenario.</p>
+    <p>Interactive simulator for EVM-compatible sandwich MEV scenarios. The default values match the Rust reference scenario.</p>
   </header>
 
   <main>
@@ -328,50 +391,78 @@
         <input id="autoOptimal" type="checkbox" checked>
         <label for="autoOptimal">Use optimal attacker size</label>
       </div>
+      <p id="attackerModeHint" class="hint"></p>
 
       <div class="control">
         <label for="victim">Victim size <span id="victimValue" class="value"></span></label>
-        <input id="victim" type="range" min="100" max="5000" step="50" value="1000">
+        <div class="control-fields">
+          <input id="victim" type="range" min="100" max="5000" step="50" value="1000">
+          <input id="victimNumber" type="number" min="100" max="5000" step="50" value="1000" aria-label="Victim size exact value">
+        </div>
       </div>
 
       <div class="control">
         <label for="slippage">Slippage <span id="slippageValue" class="value"></span></label>
-        <input id="slippage" type="range" min="0" max="5" step="0.05" value="1">
+        <div class="control-fields">
+          <input id="slippage" type="range" min="0" max="5" step="0.05" value="1">
+          <input id="slippageNumber" type="number" min="0" max="5" step="0.05" value="1" aria-label="Slippage exact value">
+        </div>
       </div>
 
       <div class="control">
         <label for="depth">Pool depth per side <span id="depthValue" class="value"></span></label>
-        <input id="depth" type="range" min="10000" max="500000" step="5000" value="100000">
+        <div class="control-fields">
+          <input id="depth" type="range" min="10000" max="500000" step="5000" value="100000">
+          <input id="depthNumber" type="number" min="10000" max="500000" step="5000" value="100000" aria-label="Pool depth exact value">
+        </div>
       </div>
 
       <div class="control">
         <label for="fee">Pool fee <span id="feeValue" class="value"></span></label>
-        <input id="fee" type="range" min="0" max="2" step="0.01" value="0.3">
+        <div class="control-fields">
+          <input id="fee" type="range" min="0" max="2" step="0.01" value="0.3">
+          <input id="feeNumber" type="number" min="0" max="2" step="0.01" value="0.3" aria-label="Pool fee exact value">
+        </div>
       </div>
 
       <div class="control">
         <label for="gasUnits">Gas units <span id="gasUnitsValue" class="value"></span></label>
-        <input id="gasUnits" type="range" min="0" max="800000" step="10000" value="0">
+        <div class="control-fields">
+          <input id="gasUnits" type="range" min="0" max="800000" step="10000" value="0">
+          <input id="gasUnitsNumber" type="number" min="0" max="800000" step="10000" value="0" aria-label="Gas units exact value">
+        </div>
       </div>
 
       <div class="control">
         <label for="baseFee">Base fee <span id="baseFeeValue" class="value"></span></label>
-        <input id="baseFee" type="range" min="0" max="30000" step="25" value="0">
+        <div class="control-fields">
+          <input id="baseFee" type="range" min="0" max="30000" step="25" value="0">
+          <input id="baseFeeNumber" type="number" min="0" max="30000" step="25" value="0" aria-label="Base fee exact value">
+        </div>
       </div>
 
       <div class="control">
         <label for="priorityFee">Priority fee <span id="priorityFeeValue" class="value"></span></label>
-        <input id="priorityFee" type="range" min="0" max="50" step="0.5" value="0">
+        <div class="control-fields">
+          <input id="priorityFee" type="range" min="0" max="50" step="0.5" value="0">
+          <input id="priorityFeeNumber" type="number" min="0" max="50" step="0.5" value="0" aria-label="Priority fee exact value">
+        </div>
       </div>
 
       <div class="control">
-        <label for="nativePrice">Native token price <span id="nativePriceValue" class="value"></span></label>
-        <input id="nativePrice" type="range" min="0" max="5000" step="25" value="1">
+        <label for="nativePrice">Gas token price <span id="nativePriceValue" class="value"></span></label>
+        <div class="control-fields">
+          <input id="nativePrice" type="range" min="0" max="5000" step="1" value="1">
+          <input id="nativePriceNumber" type="number" min="0" max="5000" step="1" value="1" aria-label="Gas token price exact value">
+        </div>
       </div>
 
       <div class="control">
         <label for="attacker">Attacker size <span id="attackerValue" class="value"></span></label>
-        <input id="attacker" type="range" min="0" max="3000" step="1" value="507">
+        <div class="control-fields">
+          <input id="attacker" type="range" min="0" max="3000" step="1" value="507">
+          <input id="attackerNumber" type="number" min="0" max="3000" step="1" value="507" aria-label="Attacker size exact value">
+        </div>
       </div>
     </aside>
 
@@ -402,53 +493,59 @@
           <strong><span id="status" class="status"></span></strong>
         </div>
       </div>
+      <div id="scenarioNote" class="panel scenario-note" role="status" aria-live="polite"></div>
 
       <div class="charts">
         <div class="panel">
           <h2>Attacker Size Frontier</h2>
-          <canvas id="frontier" width="900" height="460"></canvas>
+          <canvas id="frontier" width="900" height="460" role="img" aria-label="Attacker profit and victim output frontier by attacker size"></canvas>
           <div class="legend">
             <span class="key" style="color: var(--red)"><span class="swatch"></span>attacker PnL</span>
             <span class="key" style="color: var(--blue)"><span class="swatch"></span>victim output</span>
             <span class="key" style="color: var(--amber)"><span class="swatch"></span>victim minOut</span>
             <span class="key" style="color: var(--dark)"><span class="swatch"></span>selected attacker</span>
           </div>
+          <p id="frontierSummary" class="chart-summary"></p>
         </div>
 
         <div class="panel">
           <h2>Pool Price Path</h2>
-          <canvas id="states" width="520" height="460"></canvas>
+          <canvas id="states" width="520" height="460" role="img" aria-label="Pool price path after each transaction step"></canvas>
           <div class="legend">
-            <span class="key" style="color: var(--green)"><span class="swatch"></span>price Y/X</span>
+            <span class="key" style="color: var(--green)"><span class="swatch"></span>Price (Y/X)</span>
           </div>
+          <p id="statesSummary" class="chart-summary"></p>
         </div>
 
         <div class="panel wide-panel">
           <h2>Step Candles</h2>
-          <canvas id="candles" width="900" height="380"></canvas>
+          <canvas id="candles" width="900" height="380" role="img" aria-label="Event candles for attacker, victim, and unwind transactions"></canvas>
           <div class="legend">
             <span class="key" style="color: var(--red)"><span class="swatch"></span>price down</span>
             <span class="key" style="color: var(--green)"><span class="swatch"></span>price up</span>
             <span class="key" style="color: var(--blue)"><span class="swatch"></span>MEV buy/sell markers</span>
-            <span class="key" style="color: var(--muted)"><span class="swatch"></span>synthetic intra-step OHLC</span>
+            <span class="key" style="color: var(--muted)"><span class="swatch"></span>one tx per event candle</span>
           </div>
+          <p id="candlesSummary" class="chart-summary"></p>
         </div>
       </div>
 
       <div class="panel">
         <h2>State Table</h2>
-        <table class="state-table">
-          <thead>
-            <tr>
-              <th>Step</th>
-              <th>Action</th>
-              <th>Reserve X</th>
-              <th>Reserve Y</th>
-              <th>Price Y/X</th>
-            </tr>
-          </thead>
-          <tbody id="stateRows"></tbody>
-        </table>
+        <div class="table-scroll">
+          <table class="state-table">
+            <thead>
+              <tr>
+                <th>Step</th>
+                <th>Action</th>
+                <th>Reserve X</th>
+                <th>Reserve Y</th>
+                <th>Price (Y/X)</th>
+              </tr>
+            </thead>
+            <tbody id="stateRows"></tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>
@@ -465,6 +562,15 @@
       priorityFee: document.getElementById("priorityFee"),
       nativePrice: document.getElementById("nativePrice"),
       attacker: document.getElementById("attacker"),
+      victimNumber: document.getElementById("victimNumber"),
+      slippageNumber: document.getElementById("slippageNumber"),
+      depthNumber: document.getElementById("depthNumber"),
+      feeNumber: document.getElementById("feeNumber"),
+      gasUnitsNumber: document.getElementById("gasUnitsNumber"),
+      baseFeeNumber: document.getElementById("baseFeeNumber"),
+      priorityFeeNumber: document.getElementById("priorityFeeNumber"),
+      nativePriceNumber: document.getElementById("nativePriceNumber"),
+      attackerNumber: document.getElementById("attackerNumber"),
       victimValue: document.getElementById("victimValue"),
       slippageValue: document.getElementById("slippageValue"),
       depthValue: document.getElementById("depthValue"),
@@ -483,8 +589,16 @@
       stateRows: document.getElementById("stateRows"),
       frontier: document.getElementById("frontier"),
       states: document.getElementById("states"),
-      candles: document.getElementById("candles")
+      candles: document.getElementById("candles"),
+      scenarioNote: document.getElementById("scenarioNote"),
+      attackerModeHint: document.getElementById("attackerModeHint"),
+      frontierSummary: document.getElementById("frontierSummary"),
+      statesSummary: document.getElementById("statesSummary"),
+      candlesSummary: document.getElementById("candlesSummary")
     };
+
+    const presetButtons = [...document.querySelectorAll("[data-preset]")];
+    let activePreset = "reference";
 
     const presets = {
       reference: {
@@ -537,10 +651,49 @@
       }
     };
 
+    const controls = [
+      { range: els.victim, number: els.victimNumber },
+      { range: els.slippage, number: els.slippageNumber },
+      { range: els.depth, number: els.depthNumber },
+      { range: els.fee, number: els.feeNumber },
+      { range: els.gasUnits, number: els.gasUnitsNumber },
+      { range: els.baseFee, number: els.baseFeeNumber },
+      { range: els.priorityFee, number: els.priorityFeeNumber },
+      { range: els.nativePrice, number: els.nativePriceNumber },
+      { range: els.attacker, number: els.attackerNumber }
+    ];
+
     const fmt = (n, d = 3) => Number.isFinite(n) ? n.toLocaleString("en-US", {
       maximumFractionDigits: d,
       minimumFractionDigits: d
     }) : "-";
+
+    function clampToInput(input, value) {
+      const min = Number(input.min);
+      const max = Number(input.max);
+      let next = Number(value);
+      if (!Number.isFinite(next)) next = Number(input.value || min || 0);
+      if (Number.isFinite(min)) next = Math.max(min, next);
+      if (Number.isFinite(max)) next = Math.min(max, next);
+      return next;
+    }
+
+    function syncNumberInputs() {
+      controls.forEach(({ range, number }) => {
+        number.value = range.value;
+        number.min = range.min;
+        number.max = range.max;
+        number.step = range.step;
+      });
+    }
+
+    function setActivePreset(name) {
+      activePreset = name;
+      presetButtons.forEach(button => {
+        button.classList.toggle("active", button.dataset.preset === activePreset);
+        button.setAttribute("aria-pressed", String(button.dataset.preset === activePreset));
+      });
+    }
 
     function previewXForY(pool, dx) {
       const dxEff = dx * (1 - pool.fee);
@@ -570,12 +723,12 @@
       const start = { x: input.depth, y: input.depth, fee: input.fee };
       const honestOut = previewXForY(start, input.victim);
       const minOut = honestOut * (1 - input.slippage);
-      const states = [{ step: "0", action: "initial", x: start.x, y: start.y, price: start.y / start.x }];
+      const states = [{ step: "0", action: "initial", x: start.x, y: start.y, price: priceOf(start) }];
 
       if (attackerIn <= 0) {
         const p0 = { ...start };
         const victimActual = swapXForY(p0, input.victim);
-        states.push({ step: "1", action: "victim", x: p0.x, y: p0.y, price: p0.y / p0.x });
+        states.push({ step: "1", action: "victim", x: p0.x, y: p0.y, price: priceOf(p0) });
         return {
           attackerIn: 0,
           frontOut: 0,
@@ -595,15 +748,15 @@
 
       const p = { ...start };
       const frontOut = swapXForY(p, attackerIn);
-      states.push({ step: "1", action: "front-run", x: p.x, y: p.y, price: p.y / p.x });
+      states.push({ step: "1", action: "front-run", x: p.x, y: p.y, price: priceOf(p) });
       const gasCost = input.gasUnits * (input.baseFeeGwei + input.priorityFeeGwei) * 1e-9 * input.nativePriceX;
 
       const victimPreview = previewXForY(p, input.victim);
       if (victimPreview < minOut) {
-        states.push({ step: "2", action: "victim reverts", x: p.x + 0, y: p.y + 0, price: p.y / p.x });
+        states.push({ step: "2", action: "victim reverts", x: p.x + 0, y: p.y + 0, price: priceOf(p) });
         const backOut = swapYForX(p, frontOut);
         const profit = backOut - attackerIn;
-        states.push({ step: "3", action: "unwind", x: p.x, y: p.y, price: p.y / p.x });
+        states.push({ step: "3", action: "unwind", x: p.x, y: p.y, price: priceOf(p) });
         return {
           attackerIn,
           frontOut,
@@ -622,10 +775,10 @@
       }
 
       const victimActual = swapXForY(p, input.victim);
-      states.push({ step: "2", action: "victim", x: p.x, y: p.y, price: p.y / p.x });
+      states.push({ step: "2", action: "victim", x: p.x, y: p.y, price: priceOf(p) });
       const backOut = swapYForX(p, frontOut);
       const profit = backOut - attackerIn;
-      states.push({ step: "3", action: "back-run", x: p.x, y: p.y, price: p.y / p.x });
+      states.push({ step: "3", action: "back-run", x: p.x, y: p.y, price: priceOf(p) });
       return {
         attackerIn,
         frontOut,
@@ -677,8 +830,16 @@
         d = lo + phi * (hi - lo);
       }
 
-      const best = simulate(input, (lo + hi) / 2);
-      return best.netProfit > 0 && !best.reverted ? best : simulate(input, 0);
+      const candidate = simulate(input, (lo + hi) / 2);
+      if (candidate.profit > candidate.gasCost) {
+        candidate.grossCandidate = candidate;
+        candidate.skippedByGas = false;
+        return candidate;
+      }
+      const skipped = simulate(input, 0);
+      skipped.grossCandidate = candidate;
+      skipped.skippedByGas = candidate.profit > 0;
+      return skipped;
     }
 
     function currentInput() {
@@ -837,49 +998,140 @@
       });
     }
 
-    function buildCandles(states) {
+    function priceOf(pool) {
+      return pool.y / pool.x;
+    }
+
+    function candleWithWicks(open, close, volume, side, marker, strength, seed) {
+      const body = Math.abs(close - open);
+      const scale = Math.max(body, open * 0.00055) * strength;
+      const upperBias = side === "xToY" ? 1.35 : 0.82;
+      const lowerBias = side === "yToX" ? 1.35 : 0.82;
+      const waveA = 0.72 + 0.36 * Math.abs(Math.sin(seed * 1.71));
+      const waveB = 0.68 + 0.34 * Math.abs(Math.cos(seed * 1.37));
+
+      return {
+        open,
+        close,
+        high: Math.max(open, close) + scale * upperBias * waveA,
+        low: Math.min(open, close) - scale * lowerBias * waveB,
+        volume,
+        side,
+        marker
+      };
+    }
+
+    function appendAmbientCandles(candles, count, fromPrice, toPrice, seedOffset) {
+      let open = fromPrice;
+      for (let i = 0; i < count; i += 1) {
+        const t = (i + 1) / count;
+        const drift = fromPrice + (toPrice - fromPrice) * t;
+        const wave = Math.sin((i + seedOffset) * 1.18) * fromPrice * 0.00065;
+        const close = i === count - 1 ? toPrice : drift + wave;
+        candles.push(candleWithWicks(
+          open,
+          close,
+          Math.abs(close - open) * 120_000 + 35,
+          close >= open ? "xToY" : "yToX",
+          null,
+          1.7,
+          i + seedOffset
+        ));
+        open = close;
+      }
+    }
+
+    function appendSwapCandles(pool, candles, stages, spec) {
+      const start = candles.length;
+      for (let i = 0; i < spec.chunks; i += 1) {
+        const open = priceOf(pool);
+        const amountIn = spec.amountIn / spec.chunks;
+        const amountOut = spec.side === "xToY"
+          ? swapXForY(pool, amountIn)
+          : swapYForX(pool, amountIn);
+        const close = priceOf(pool);
+        candles.push(candleWithWicks(
+          open,
+          close,
+          amountIn + amountOut,
+          spec.side,
+          spec.marker,
+          spec.wickStrength,
+          candles.length + 11
+        ));
+      }
+
+      if (candles.length > start) {
+        stages.push({
+          start,
+          end: candles.length - 1,
+          center: (start + candles.length - 1) / 2,
+          marker: spec.marker
+        });
+      }
+    }
+
+    function buildCandles(input, outcome) {
       const candles = [];
-      const boundaries = [];
-      const segmentCount = states.length > 2 ? 12 : 18;
+      const stages = [];
+      const events = [];
+      const pool = { x: input.depth, y: input.depth, fee: input.fee };
+      const initialPrice = priceOf(pool);
+      const chunks = 1;
 
-      for (let i = 1; i < states.length; i += 1) {
-        const prev = states[i - 1];
-        const curr = states[i];
-        const startIndex = candles.length;
-        const start = prev.price;
-        const end = curr.price;
-        const delta = end - start;
-        const range = Math.max(Math.abs(delta), start * 0.0008);
-        let open = start;
+      appendAmbientCandles(candles, 9, initialPrice * 0.9975, initialPrice, 3);
 
-        for (let j = 1; j <= segmentCount; j += 1) {
-          const t = j / segmentCount;
-          const eased = t * t * (3 - 2 * t);
-          const ripple = Math.sin((i * 13 + j * 7) * 0.71) * range * 0.035 * Math.sin(Math.PI * t);
-          const close = j === segmentCount ? end : start + delta * eased + ripple;
-          const wickUp = range * (0.06 + 0.045 * Math.abs(Math.sin(i * 3.1 + j)));
-          const wickDown = range * (0.06 + 0.045 * Math.abs(Math.cos(i * 2.7 + j)));
-          candles.push({
-            open,
-            close,
-            high: Math.max(open, close) + wickUp,
-            low: Math.min(open, close) - wickDown,
-            action: curr.action,
-            boundary: j === segmentCount
-          });
-          open = close;
-        }
+      if (outcome.attackerIn <= 0) {
+        appendSwapCandles(pool, candles, stages, {
+          side: "xToY",
+          amountIn: input.victim,
+          chunks,
+          marker: stageMarker("victim"),
+          wickStrength: 1.6
+        });
+        appendAmbientCandles(candles, 7, priceOf(pool), priceOf(pool) * 1.0015, 41);
+        return { candles, stages, events };
+      }
 
-        const marker = stageMarker(curr.action);
-        boundaries.push({
-          index: candles.length - 0.5,
-          center: startIndex + segmentCount / 2 - 0.5,
-          action: curr.action,
-          marker
+      appendSwapCandles(pool, candles, stages, {
+        side: "xToY",
+        amountIn: outcome.attackerIn,
+        chunks,
+        marker: stageMarker("front-run"),
+        wickStrength: 2.7
+      });
+
+      if (outcome.reverted) {
+        events.push({
+          index: Math.max(0, candles.length - 0.5),
+          marker: stageMarker("victim reverts")
+        });
+        appendSwapCandles(pool, candles, stages, {
+          side: "yToX",
+          amountIn: outcome.frontOut,
+          chunks,
+          marker: stageMarker("unwind"),
+          wickStrength: 2.4
+        });
+      } else {
+        appendSwapCandles(pool, candles, stages, {
+          side: "xToY",
+          amountIn: input.victim,
+          chunks,
+          marker: stageMarker("victim"),
+          wickStrength: 2.15
+        });
+        appendSwapCandles(pool, candles, stages, {
+          side: "yToX",
+          amountIn: outcome.frontOut,
+          chunks,
+          marker: stageMarker("back-run"),
+          wickStrength: 2.55
         });
       }
 
-      return { candles, boundaries };
+      appendAmbientCandles(candles, 7, priceOf(pool), priceOf(pool) * 1.001, 71);
+      return { candles, stages, events };
     }
 
     function stageMarker(action) {
@@ -888,7 +1140,7 @@
           title: "MEV BUY",
           subtitle: "attacker X -> Y",
           color: "#276fbf",
-          arrow: "down"
+          role: "buy"
         };
       }
       if (action === "back-run") {
@@ -896,7 +1148,7 @@
           title: "MEV SELL",
           subtitle: "attacker Y -> X",
           color: "#7b4ab8",
-          arrow: "up"
+          role: "sell"
         };
       }
       if (action === "unwind") {
@@ -904,7 +1156,7 @@
           title: "MEV SELL",
           subtitle: "failed attack unwind",
           color: "#a96600",
-          arrow: "up"
+          role: "sell"
         };
       }
       if (action === "victim reverts") {
@@ -912,30 +1164,30 @@
           title: "VICTIM REVERTS",
           subtitle: "below minOut",
           color: "#c7394b",
-          arrow: "flat"
+          role: "event"
         };
       }
       return {
         title: "VICTIM SWAP",
         subtitle: "victim X -> Y",
         color: "#25364a",
-        arrow: "down"
+        role: "victim"
       };
     }
 
-    function drawCandles(outcome) {
+    function drawCandles(input, outcome) {
       const canvas = els.candles;
       const { ctx, w, h } = prepareCanvas(canvas, 900, 380);
 
-      const { candles, boundaries } = buildCandles(outcome.states);
+      const { candles, stages, events } = buildCandles(input, outcome);
       if (candles.length === 0) return;
 
-      const pad = { l: 18, r: 76, t: 24, b: 62 };
+      const pad = { l: 18, r: 82, t: 40, b: 66 };
       const low = Math.min(...candles.map(c => c.low));
       const high = Math.max(...candles.map(c => c.high));
       const span = high - low || 1;
-      const min = low - span * 0.06;
-      const max = high + span * 0.06;
+      const min = low - span * 0.08;
+      const max = high + span * 0.08;
       const plotW = w - pad.l - pad.r;
       const volumeH = 44;
       const volumeGap = 12;
@@ -946,15 +1198,25 @@
       const y = price => pad.t + (max - price) / (max - min || 1) * plotH;
       const x = index => pad.l + index * slot + slot / 2;
 
-      ctx.fillStyle = "#fbfcfe";
+      ctx.fillStyle = "#0f1724";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#111c2c";
       ctx.fillRect(pad.l, pad.t, plotW, priceBottom - pad.t);
-      ctx.fillStyle = "#f7f9fc";
+      ctx.fillStyle = "#0d1522";
       ctx.fillRect(pad.l, volumeTop, plotW, volumeH);
 
-      ctx.strokeStyle = "#edf1f6";
+      stages.forEach(stage => {
+        const left = pad.l + stage.start * slot;
+        const right = pad.l + (stage.end + 1) * slot;
+        ctx.fillStyle = `${stage.marker.color}22`;
+        ctx.fillRect(left, pad.t, right - left, priceBottom - pad.t);
+        ctx.fillRect(left, volumeTop, right - left, volumeH);
+      });
+
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.18)";
       ctx.lineWidth = 1;
-      ctx.font = "12px system-ui";
-      ctx.fillStyle = "#5c6675";
+      ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.fillStyle = "#a8b3c2";
       for (let i = 0; i <= 5; i += 1) {
         const price = min + (max - min) * i / 5;
         const py = y(price);
@@ -965,7 +1227,15 @@
         ctx.fillText(fmt(price, 4), w - pad.r + 10, py + 4);
       }
 
-      ctx.strokeStyle = "#d7dee8";
+      for (let i = 0; i <= 6; i += 1) {
+        const px = pad.l + plotW * i / 6;
+        ctx.beginPath();
+        ctx.moveTo(px, pad.t);
+        ctx.lineTo(px, h - pad.b);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.28)";
       ctx.beginPath();
       ctx.rect(pad.l, pad.t, plotW, plotH);
       ctx.stroke();
@@ -973,40 +1243,29 @@
       ctx.rect(pad.l, volumeTop, plotW, volumeH);
       ctx.stroke();
 
-      boundaries.forEach(boundary => {
-        const bx = pad.l + boundary.index * slot;
-        ctx.strokeStyle = "rgba(92, 102, 117, 0.32)";
+      stages.forEach(stage => {
+        const endX = pad.l + (stage.end + 1) * slot;
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.26)";
         ctx.setLineDash([4, 5]);
         ctx.beginPath();
-        ctx.moveTo(bx, pad.t);
-        ctx.lineTo(bx, h - pad.b);
+        ctx.moveTo(endX, pad.t);
+        ctx.lineTo(endX, h - pad.b);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        const tagW = boundary.marker.title.length > 10 ? 116 : 92;
-        const tagX = Math.max(pad.l + 4, Math.min(w - pad.r - tagW - 4, x(boundary.center) - tagW / 2));
-        const tagY = pad.t + 10;
-        ctx.fillStyle = boundary.marker.color;
-        ctx.beginPath();
-        roundRect(ctx, tagX, tagY, tagW, 24, 6);
-        ctx.fill();
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "700 11px system-ui";
-        ctx.fillText(boundary.marker.title, tagX + 8, tagY + 16);
-
-        ctx.fillStyle = "#5c6675";
-        ctx.font = "12px system-ui";
-        const labelX = Math.max(pad.l + 4, Math.min(w - pad.r - 118, x(boundary.center) - 52));
-        ctx.fillText(boundary.marker.subtitle, labelX, h - 24);
-        drawStageArrow(ctx, x(boundary.center), tagY + 36, boundary.marker);
+        const label = stage.marker.title.replace("MEV ", "");
+        ctx.fillStyle = "#93a4b8";
+        ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+        const labelX = Math.max(pad.l + 4, Math.min(w - pad.r - 58, x(stage.center) - 22));
+        ctx.fillText(label, labelX, h - 25);
       });
 
-      const bodyW = Math.max(5, Math.min(12, slot * 0.62));
-      const maxImpact = Math.max(...candles.map(c => Math.abs(c.close - c.open)), 1e-12);
+      const bodyW = Math.max(7, Math.min(20, slot * 0.68));
+      const maxVolume = Math.max(...candles.map(c => c.volume), 1e-12);
       candles.forEach((candle, i) => {
         const cx = x(i);
         const up = candle.close >= candle.open;
-        const color = up ? "#16805b" : "#c7394b";
+        const color = up ? "#16c784" : "#ea3943";
         const yOpen = y(candle.open);
         const yClose = y(candle.close);
         const yHigh = y(candle.high);
@@ -1015,28 +1274,41 @@
         const bottom = Math.max(yOpen, yClose);
 
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.25;
+        ctx.lineWidth = 1.1;
         ctx.beginPath();
         ctx.moveTo(cx, yHigh);
         ctx.lineTo(cx, yLow);
         ctx.stroke();
 
-        ctx.fillStyle = up ? "rgba(22, 128, 91, 0.18)" : color;
+        ctx.fillStyle = color;
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.rect(cx - bodyW / 2, top, bodyW, Math.max(2, bottom - top));
         ctx.fill();
         ctx.stroke();
 
-        const impactH = Math.max(2, Math.abs(candle.close - candle.open) / maxImpact * (volumeH - 7));
-        ctx.fillStyle = up ? "rgba(22, 128, 91, 0.35)" : "rgba(199, 57, 75, 0.35)";
+        const impactH = Math.max(2, candle.volume / maxVolume * (volumeH - 7));
+        ctx.fillStyle = up ? "rgba(22, 199, 132, 0.35)" : "rgba(234, 57, 67, 0.35)";
         ctx.fillRect(cx - bodyW / 2, h - pad.b - impactH, bodyW, impactH);
+      });
+
+      stages.forEach(stage => {
+        const slice = candles.slice(stage.start, stage.end + 1);
+        const cx = x(stage.center);
+        const stageHigh = Math.max(...slice.map(c => c.high));
+        const stageLow = Math.min(...slice.map(c => c.low));
+        const markerY = stage.marker.role === "sell" ? y(stageHigh) - 10 : y(stageLow) + 18;
+        drawTradeMarker(ctx, cx, markerY, stage.marker);
+      });
+
+      events.forEach(event => {
+        drawEventMarker(ctx, x(event.index), pad.t + 18, event.marker);
       });
 
       const last = candles[candles.length - 1].close;
       const lastY = y(last);
-      ctx.strokeStyle = "#25364a";
+      ctx.strokeStyle = "#f59e0b";
       ctx.setLineDash([6, 5]);
       ctx.beginPath();
       ctx.moveTo(pad.l, lastY);
@@ -1044,42 +1316,73 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = "#25364a";
-      ctx.fillRect(w - pad.r + 8, lastY - 11, 62, 22);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "12px system-ui";
+      ctx.fillStyle = "#f59e0b";
+      ctx.fillRect(w - pad.r + 8, lastY - 11, 68, 22);
+      ctx.fillStyle = "#111827";
+      ctx.font = "700 12px ui-monospace, SFMono-Regular, Menlo, monospace";
       ctx.fillText(fmt(last, 4), w - pad.r + 13, lastY + 4);
 
-      ctx.fillStyle = "#5c6675";
-      ctx.font = "13px system-ui";
-      ctx.fillText("synthetic transaction candles", pad.l, h - 8);
+      const first = candles[0].open;
+      const change = (last / first - 1) * 100;
+      const highAll = Math.max(...candles.map(c => c.high));
+      const lowAll = Math.min(...candles.map(c => c.low));
+      ctx.fillStyle = "#e5edf7";
+      ctx.font = "700 13px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.fillText("Price (Y/X) Event Candles", pad.l, 18);
+      ctx.fillStyle = change >= 0 ? "#16c784" : "#ea3943";
+      ctx.fillText(`${change >= 0 ? "+" : ""}${fmt(change, 3)}%`, pad.l + 160, 18);
+      ctx.fillStyle = "#93a4b8";
+      ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.fillText(
+        `O ${fmt(first, 4)}  H ${fmt(highAll, 4)}  L ${fmt(lowAll, 4)}  C ${fmt(last, 4)}`,
+        pad.l + 244,
+        18
+      );
+      ctx.fillStyle = "#93a4b8";
+      ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.fillText("Price (Y/X)", pad.l, h - 8);
     }
 
-    function drawStageArrow(ctx, x, y, marker) {
-      ctx.strokeStyle = marker.color;
+    function drawTradeMarker(ctx, x, y, marker) {
+      const tag = marker.title;
+      const tagW = tag.length > 8 ? 84 : 60;
+      const tagH = 22;
+      const tagX = x - tagW / 2;
+      const tagY = marker.role === "sell" ? y - tagH - 8 : y + 8;
       ctx.fillStyle = marker.color;
-      ctx.lineWidth = 2;
+      ctx.beginPath();
+      roundRect(ctx, tagX, tagY, tagW, tagH, 5);
+      ctx.fill();
 
-      if (marker.arrow === "flat") {
-        ctx.beginPath();
-        ctx.moveTo(x - 13, y + 8);
-        ctx.lineTo(x + 13, y + 8);
-        ctx.stroke();
-        return;
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 11px system-ui";
+      ctx.fillText(tag, tagX + 7, tagY + 15);
+
+      ctx.fillStyle = marker.color;
+      ctx.beginPath();
+      if (marker.role === "sell") {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 6, y - 8);
+        ctx.lineTo(x + 6, y - 8);
+      } else {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 6, y + 8);
+        ctx.lineTo(x + 6, y + 8);
       }
-
-      const direction = marker.arrow === "up" ? -1 : 1;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x, y + direction * 18);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(x, y + direction * 22);
-      ctx.lineTo(x - 6, y + direction * 12);
-      ctx.lineTo(x + 6, y + direction * 12);
       ctx.closePath();
       ctx.fill();
+    }
+
+    function drawEventMarker(ctx, x, y, marker) {
+      const tagW = 112;
+      const tagX = x - tagW / 2;
+      ctx.fillStyle = marker.color;
+      ctx.beginPath();
+      roundRect(ctx, tagX, y, tagW, 22, 5);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 11px system-ui";
+      ctx.fillText(marker.title, tagX + 8, y + 15);
     }
 
     function roundRect(ctx, x, y, width, height, radius) {
@@ -1101,11 +1404,13 @@
       const best = optimal(input);
       const maxManual = Math.max(best.attackerIn * 2.4, Number(els.attacker.value) * 1.1, input.victim * 2.5, 1);
       els.attacker.max = String(Math.ceil(maxManual));
+      els.attackerNumber.max = els.attacker.max;
       if (els.autoOptimal.checked) {
         els.attacker.value = String(best.attackerIn);
       }
       const attackerIn = Number(els.attacker.value);
       const selected = els.autoOptimal.checked ? best : simulate(input, attackerIn);
+      const pricePath = selected.states.map(s => fmt(s.price, 6)).join(" -> ");
 
       els.victimValue.textContent = `${fmt(input.victim, 0)} X`;
       els.slippageValue.textContent = `${fmt(input.slippage * 100, 2)}%`;
@@ -1114,8 +1419,13 @@
       els.gasUnitsValue.textContent = fmt(input.gasUnits, 0);
       els.baseFeeValue.textContent = `${fmt(input.baseFeeGwei, 1)} gwei`;
       els.priorityFeeValue.textContent = `${fmt(input.priorityFeeGwei, 1)} gwei`;
-      els.nativePriceValue.textContent = `${fmt(input.nativePriceX, 0)} X/ETH`;
+      els.nativePriceValue.textContent = `${fmt(input.nativePriceX, 0)} X/gas token`;
       els.attackerValue.textContent = `${fmt(selected.attackerIn, 3)} X`;
+      els.attacker.disabled = els.autoOptimal.checked;
+      els.attackerNumber.disabled = els.autoOptimal.checked;
+      els.attackerModeHint.textContent = els.autoOptimal.checked
+        ? "Auto mode: the slider is locked to the gas-aware optimizer result."
+        : "Manual mode: use the slider or exact input to test a fixed attacker size.";
 
       els.profit.textContent = `${fmt(selected.profit, 6)} X`;
       els.profit.className = selected.profit >= 0 ? "ok" : "bad";
@@ -1124,8 +1434,39 @@
       els.gasCost.textContent = `${fmt(selected.gasCost, 6)} X`;
       els.roi.textContent = selected.attackerIn > 0 ? `${fmt(selected.roi * 100, 4)}%` : "0.0000%";
       els.victimOut.textContent = `${fmt(selected.victimActual, 6)} Y`;
-      els.status.textContent = selected.reverted ? "reverted" : "executes";
-      els.status.className = selected.reverted ? "status reverted" : "status";
+      if (selected.reverted) {
+        els.status.textContent = "reverted";
+        els.status.className = "status reverted";
+      } else if (selected.netProfit < 0) {
+        els.status.textContent = "net loss";
+        els.status.className = "status reverted";
+      } else {
+        els.status.textContent = "executes";
+        els.status.className = "status";
+      }
+
+      if (els.autoOptimal.checked && selected.skippedByGas) {
+        const gross = selected.grossCandidate;
+        els.scenarioNote.textContent =
+          `Gas-aware optimizer skips the sandwich: the best gross attack would earn ${fmt(gross.profit, 6)} X before gas, ` +
+          `but gas would cost ${fmt(gross.gasCost, 6)} X, making net profit ${fmt(gross.netProfit, 6)} X.`;
+      } else if (selected.reverted) {
+        els.scenarioNote.textContent =
+          "The victim output falls below minOut, so the victim reverts and the attacker only unwinds the failed front-run.";
+      } else if (selected.attackerIn <= 0) {
+        els.scenarioNote.textContent =
+          "No sandwich is selected. The chart still shows how the victim swap changes the pool by itself.";
+      } else {
+        els.scenarioNote.textContent =
+          "The selected sandwich executes: attacker front-runs, the victim still clears minOut, then attacker back-runs.";
+      }
+
+      els.frontierSummary.textContent =
+        `Selected attacker size ${fmt(selected.attackerIn, 3)} X; victim output ${fmt(selected.victimActual, 6)} Y vs minOut ${fmt(selected.minOut, 6)} Y.`;
+      els.statesSummary.textContent = `Price path (Y/X): ${pricePath}.`;
+      els.candlesSummary.textContent = selected.reverted
+        ? "Candles show the front-run followed by a victim revert and attacker unwind."
+        : "Candles show the ordered swap events and the final pool price after execution.";
 
       els.stateRows.innerHTML = selected.states.map(s => `
         <tr>
@@ -1139,28 +1480,45 @@
 
       drawFrontier(input, selected, best);
       drawStates(selected);
-      drawCandles(selected);
+      drawCandles(input, selected);
+      syncNumberInputs();
+      setActivePreset(activePreset);
     }
 
-    for (const el of [
-      els.autoOptimal,
-      els.victim,
-      els.slippage,
-      els.depth,
-      els.fee,
-      els.gasUnits,
-      els.baseFee,
-      els.priorityFee,
-      els.nativePrice,
-      els.attacker
-    ]) {
-      el.addEventListener("input", render);
-      el.addEventListener("change", render);
-    }
+    controls.forEach(({ range, number }) => {
+      range.addEventListener("input", () => {
+        activePreset = null;
+        render();
+      });
+      range.addEventListener("change", () => {
+        activePreset = null;
+        render();
+      });
+      number.addEventListener("input", () => {
+        activePreset = null;
+        range.value = String(clampToInput(range, number.value));
+        render();
+      });
+      number.addEventListener("change", () => {
+        activePreset = null;
+        range.value = String(clampToInput(range, number.value));
+        render();
+      });
+    });
 
-    document.querySelectorAll("[data-preset]").forEach(button => {
+    els.autoOptimal.addEventListener("input", () => {
+      activePreset = null;
+      render();
+    });
+    els.autoOptimal.addEventListener("change", () => {
+      activePreset = null;
+      render();
+    });
+
+    presetButtons.forEach(button => {
       button.addEventListener("click", () => {
         const preset = presets[button.dataset.preset];
+        activePreset = button.dataset.preset;
         els.autoOptimal.checked = preset.autoOptimal;
         els.victim.value = String(preset.victim);
         els.slippage.value = String(preset.slippage);
