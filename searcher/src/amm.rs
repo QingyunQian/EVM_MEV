@@ -23,9 +23,9 @@ impl Pool {
         self.x * self.y
     }
 
-    /// Mid-price of X in units of Y: `y / x`.
+    /// Mid-price of Y in units of X: `x / y`.
     pub fn price(&self) -> f64 {
-        self.y / self.x
+        self.x / self.y
     }
 
     /// Swap `dx` units of X into the pool, receiving Y out.
@@ -83,11 +83,42 @@ mod tests {
     }
 
     #[test]
+    fn price_is_x_per_y() {
+        let p = Pool::new(120.0, 80.0, 0.003);
+
+        assert_relative_eq!(p.price(), 1.5, epsilon = 1e-12);
+    }
+
+    #[test]
     fn preview_matches_swap() {
         let p = Pool::new(5_000.0, 5_000.0, 0.003);
         let dy_preview = p.preview_x_for_y(100.0);
         let mut p2 = p;
         let dy = p2.swap_x_for_y(100.0);
         assert_relative_eq!(dy_preview, dy, epsilon = 1e-12);
+    }
+
+    #[test]
+    fn preview_y_for_x_matches_swap() {
+        let p = Pool::new(5_000.0, 7_000.0, 0.003);
+        let dx_preview = p.preview_y_for_x(120.0);
+        let mut p2 = p;
+        let dx = p2.swap_y_for_x(120.0);
+
+        assert_relative_eq!(dx_preview, dx, epsilon = 1e-12);
+    }
+
+    #[test]
+    fn swaps_move_x_per_y_price_in_expected_direction() {
+        let mut p = Pool::new(10_000.0, 10_000.0, 0.003);
+        let initial_price = p.price();
+
+        let y_out = p.swap_x_for_y(100.0);
+        let after_buy_y = p.price();
+        assert!(after_buy_y > initial_price);
+
+        let _ = p.swap_y_for_x(y_out);
+        let after_sell_y = p.price();
+        assert!(after_sell_y < after_buy_y);
     }
 }

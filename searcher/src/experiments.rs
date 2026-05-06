@@ -426,6 +426,19 @@ fn logspace(a: f64, b: f64, n: usize) -> Vec<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn gas_model_cost_uses_total_fee_and_native_price() {
+        let gas = GasModel {
+            gas_units: 500_000.0,
+            base_fee_gwei: 25.0,
+            priority_fee_gwei: 2.0,
+            native_price_x: 1.0,
+        };
+
+        assert_relative_eq!(gas.cost_x(), 0.0135, epsilon = 1e-12);
+    }
 
     #[test]
     fn gas_sweep_clamps_net_profit_after_gas() {
@@ -454,6 +467,30 @@ mod tests {
     }
 
     #[test]
+    fn attacker_size_sweep_contains_executable_optimum_and_revert_region() {
+        let rows = sweep_attacker_size(
+            Pool::new(100_000.0, 100_000.0, 0.003),
+            VictimSwap {
+                v: 1_000.0,
+                slippage: 0.01,
+            },
+            120,
+        );
+
+        assert_eq!(rows.len(), 120);
+        assert!(rows.iter().any(|r| r.is_optimal == 1 && r.reverted == 0));
+        assert!(rows.iter().any(|r| r.reverted == 1));
+        assert!(rows
+            .iter()
+            .filter(|r| r.reverted == 0)
+            .all(|r| r.victim_actual_out >= r.victim_min_out));
+        assert!(rows
+            .iter()
+            .filter(|r| r.reverted == 1)
+            .all(|r| r.victim_actual_out < r.victim_min_out));
+    }
+
+    #[test]
     fn defense_comparison_contains_reference_and_private_route() {
         let rows = defense_comparison();
         let reference = rows
@@ -470,5 +507,38 @@ mod tests {
         assert_eq!(private_route.attacker_in, 0.0);
         assert_eq!(private_route.net_profit_after_gas, 0.0);
         assert_eq!(private_route.victim_extra_loss, 0.0);
+    }
+
+    #[test]
+    fn defense_high_gas_keeps_gross_mev_but_skips_execution() {
+        let rows = defense_comparison();
+        let high_gas = rows
+            .iter()
+            .find(|r| r.defense == "high_gas")
+            .expect("high gas defense row");
+
+        assert!(high_gas.gross_profit > 0.0);
+        assert!(high_gas.gas_cost > high_gas.gross_profit);
+        assert_eq!(high_gas.attacker_in, 0.0);
+        assert_eq!(high_gas.net_profit_after_gas, 0.0);
+        assert_eq!(high_gas.victim_extra_loss, 0.0);
+    }
+
+    #[test]
+    fn one_point_sweeps_return_requested_boundary_value() {
+        let slip = sweep_slippage(
+            Pool::new(100_000.0, 100_000.0, 0.003),
+            1_000.0,
+            0.005,
+            0.05,
+            1,
+        );
+        let depth = sweep_pool_depth(0.003, 1_000.0, 0.01, 10_000.0, 1_000_000.0, 1);
+
+        assert_eq!(slip.len(), 1);
+        assert_relative_eq!(slip[0].slippage, 0.005, epsilon = 1e-12);
+        assert_eq!(depth.len(), 1);
+        assert_relative_eq!(depth[0].pool_x, 10_000.0, epsilon = 1e-12);
+        assert_relative_eq!(depth[0].pool_y, 10_000.0, epsilon = 1e-12);
     }
 }

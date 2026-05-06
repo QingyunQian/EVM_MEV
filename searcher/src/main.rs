@@ -546,7 +546,7 @@ fn print_trace(pool: Pool, victim: VictimSwap, attacker_in: f64, gas: GasCost) {
     );
     println!("attacker_in={:.6}", attacker_in);
     println!();
-    println!("| step | actor | action | amount_in | amount_out | reserve_x | reserve_y | price_y_per_x | note |");
+    println!("| step | actor | action | amount_in | amount_out | reserve_x | reserve_y | price_x_per_y | note |");
     println!("| ---- | ----- | ------ | --------- | ---------- | --------- | --------- | ------------- | ---- |");
     println!(
         "| 0 | - | initial pool | - | - | {:.6} | {:.6} | {:.6} | quote before attack |",
@@ -591,6 +591,19 @@ fn print_trace(pool: Pool, victim: VictimSwap, attacker_in: f64, gas: GasCost) {
 #[cfg(test)]
 mod cli_demo_tests {
     use super::*;
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn gas_cost_uses_total_fee_and_native_price() {
+        let gas = GasCost {
+            gas_units: 500_000.0,
+            base_fee_gwei: 25.0,
+            priority_fee_gwei: 2.0,
+            native_price_x: 1.0,
+        };
+
+        assert_relative_eq!(gas.cost_x(), 0.0135, epsilon = 1e-12);
+    }
 
     #[test]
     fn two_hop_route_finds_executable_positive_sandwich() {
@@ -606,6 +619,21 @@ mod cli_demo_tests {
         assert!(outcome.attacker_profit > 0.0);
         assert!(outcome.victim_extra_loss > 0.0);
         assert!(outcome.victim_actual_out >= outcome.victim_honest_out * 0.99);
+    }
+
+    #[test]
+    fn two_hop_no_attack_matches_honest_route() {
+        let first = Pool::new(100_000.0, 100_000.0, 0.003);
+        let second = Pool::new(100_000.0, 100_000.0, 0.003);
+        let honest_mid = first.preview_x_for_y(1_000.0);
+        let honest_out = second.preview_x_for_y(honest_mid);
+        let outcome = route_outcome(first, second, 1_000.0, honest_out * 0.99, honest_out, 0.0);
+
+        assert!(!outcome.reverted);
+        assert_eq!(outcome.attacker_in, 0.0);
+        assert_eq!(outcome.attacker_profit, 0.0);
+        assert_relative_eq!(outcome.victim_actual_out, honest_out, epsilon = 1e-9);
+        assert_eq!(outcome.victim_extra_loss, 0.0);
     }
 
     #[test]

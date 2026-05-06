@@ -132,12 +132,12 @@ cargo run --release -- trace --victim 1000 --slippage 0.01
 
 Expected reference states:
 
-| Step | Actor | Action | Reserve X | Reserve Y | Price `Y/X` | Why it matters |
+| Step | Actor | Action | Reserve X | Reserve Y | Price `X/Y` | Why it matters |
 | ---- | ----- | ------ | --------- | --------- | ----------- | -------------- |
 | 0 | - | Initial pool | `100000.000000` | `100000.000000` | `1.000000` | Victim frontend quotes the honest swap here. |
-| 1 | Attacker | Front-run X -> Y | `100507.044775` | `99497.019047` | `0.989951` | The attacker moves price against the victim. |
-| 2 | Victim | Swap X -> Y | `101507.044775` | `98519.732593` | `0.970570` | Victim receives only `977.286454 Y`, still just above `minOut`. |
-| 3 | Attacker | Back-run Y -> X | `100992.983751` | `99022.713546` | `0.980491` | Attacker exits back to X and realizes profit. |
+| 1 | Attacker | Front-run X -> Y | `100507.044775` | `99497.019047` | `1.010151` | The attacker moves price against the victim. |
+| 2 | Victim | Swap X -> Y | `101507.044775` | `98519.732593` | `1.030322` | Victim receives only `977.286454 Y`, still just above `minOut`. |
+| 3 | Attacker | Back-run Y -> X | `100992.983751` | `99022.713546` | `1.019897` | Attacker exits back to X and realizes profit. |
 
 ```mermaid
 stateDiagram-v2
