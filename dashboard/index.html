@@ -50,6 +50,11 @@
       font-size: 15px;
     }
 
+    .disclaimer {
+      max-width: 1040px;
+      font-size: 13px;
+    }
+
     main {
       display: grid;
       grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
@@ -72,7 +77,8 @@
 
     .controls {
       display: grid;
-      gap: 16px;
+      gap: 12px;
+      align-content: start;
       position: sticky;
       top: 12px;
     }
@@ -168,6 +174,41 @@
       background: #f8fbff;
     }
 
+    details.panel {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    details.panel > summary {
+      cursor: pointer;
+      padding: 14px 16px;
+      color: var(--dark);
+      font-weight: 750;
+    }
+
+    .details-body {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      padding: 0 16px 16px;
+    }
+
+    .formula {
+      display: block;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fbff;
+      color: var(--dark);
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .controls details.panel {
+      align-self: start;
+    }
+
     .table-scroll {
       overflow-x: auto;
     }
@@ -206,7 +247,7 @@
 
     .metrics {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 12px;
     }
 
@@ -229,9 +270,15 @@
     .metric strong {
       display: block;
       margin-top: 6px;
-      font-size: clamp(18px, 2.4vw, 26px);
+      font-size: clamp(16px, 1.8vw, 24px);
+      line-height: 1.2;
       font-variant-numeric: tabular-nums;
-      overflow-wrap: anywhere;
+      overflow-wrap: normal;
+      white-space: nowrap;
+    }
+
+    .metric.wide {
+      grid-column: span 2;
     }
 
     .ok {
@@ -321,6 +368,7 @@
       font-weight: 750;
       background: #e9f7f1;
       color: var(--green);
+      white-space: nowrap;
     }
 
     .status.reverted {
@@ -332,6 +380,34 @@
       margin: 0 0 12px;
       font-size: 16px;
       letter-spacing: 0;
+    }
+
+    .event-timeline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      color: var(--dark);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .event-step {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fbfcfe;
+      white-space: nowrap;
+    }
+
+    .profit-summary {
+      margin: 12px 0 0;
+      color: var(--dark);
+      font-size: 13px;
+      font-weight: 650;
     }
 
     @media (max-width: 960px) {
@@ -373,6 +449,7 @@
   <header>
     <h1>Sandwich MEV Dashboard</h1>
     <p>Interactive simulator for EVM-compatible sandwich MEV scenarios. The default values match the Rust reference scenario.</p>
+    <p class="disclaimer">Educational constant-product AMM simulator. Does not model live mempool access, builder auctions, concentrated liquidity, routing, token decimals, integer rounding, or execution uncertainty.</p>
   </header>
 
   <main>
@@ -380,10 +457,10 @@
       <div>
         <h2>Presets</h2>
         <div class="presets" aria-label="Scenario presets">
-          <button class="preset-button" type="button" data-preset="reference">Reference</button>
-          <button class="preset-button" type="button" data-preset="highGas">High gas</button>
-          <button class="preset-button" type="button" data-preset="deepPool">Deep pool</button>
-          <button class="preset-button" type="button" data-preset="oversized">Oversized attack</button>
+          <button class="preset-button" type="button" data-preset="reference" title="Baseline example with the reference pool, victim, and slippage.">Reference</button>
+          <button class="preset-button" type="button" data-preset="highGas" title="High fixed gas cost can make net profit negative.">High gas</button>
+          <button class="preset-button" type="button" data-preset="deepPool" title="Deeper liquidity lowers price impact and shrinks sandwich profit.">Deep pool</button>
+          <button class="preset-button" type="button" data-preset="oversized" title="Oversized front-runs can push the victim below minOut and revert.">Oversized attack</button>
         </div>
       </div>
 
@@ -426,44 +503,56 @@
       </div>
 
       <div class="control">
-        <label for="gasUnits">Gas units <span id="gasUnitsValue" class="value"></span></label>
-        <div class="control-fields">
-          <input id="gasUnits" type="range" min="0" max="800000" step="10000" value="0">
-          <input id="gasUnitsNumber" type="number" min="0" max="800000" step="10000" value="0" aria-label="Gas units exact value">
-        </div>
-      </div>
-
-      <div class="control">
-        <label for="baseFee">Base fee <span id="baseFeeValue" class="value"></span></label>
-        <div class="control-fields">
-          <input id="baseFee" type="range" min="0" max="30000" step="25" value="0">
-          <input id="baseFeeNumber" type="number" min="0" max="30000" step="25" value="0" aria-label="Base fee exact value">
-        </div>
-      </div>
-
-      <div class="control">
-        <label for="priorityFee">Priority fee <span id="priorityFeeValue" class="value"></span></label>
-        <div class="control-fields">
-          <input id="priorityFee" type="range" min="0" max="50" step="0.5" value="0">
-          <input id="priorityFeeNumber" type="number" min="0" max="50" step="0.5" value="0" aria-label="Priority fee exact value">
-        </div>
-      </div>
-
-      <div class="control">
-        <label for="nativePrice">Gas token price <span id="nativePriceValue" class="value"></span></label>
-        <div class="control-fields">
-          <input id="nativePrice" type="range" min="0" max="5000" step="1" value="1">
-          <input id="nativePriceNumber" type="number" min="0" max="5000" step="1" value="1" aria-label="Gas token price exact value">
-        </div>
-      </div>
-
-      <div class="control">
         <label for="attacker">Attacker size <span id="attackerValue" class="value"></span></label>
         <div class="control-fields">
           <input id="attacker" type="range" min="0" max="3000" step="1" value="507">
           <input id="attackerNumber" type="number" min="0" max="3000" step="1" value="507" aria-label="Attacker size exact value">
         </div>
       </div>
+
+      <details class="panel" open>
+        <summary>Gas &amp; Fees</summary>
+        <div class="details-body">
+          <p class="hint">Gross-profit optimizer with gas-adjusted net profit check. Fixed gas affects whether to execute, not the gross-optimal attacker size.</p>
+          <code class="formula">gasCostInX =
+  gasUnits
+  × (baseFeeGwei + priorityFeeGwei)
+  × 1e-9
+  × gasTokenPriceInX</code>
+
+          <div class="control">
+            <label for="gasUnits">Gas units <span id="gasUnitsValue" class="value"></span></label>
+            <div class="control-fields">
+              <input id="gasUnits" type="range" min="0" max="800000" step="10000" value="0">
+              <input id="gasUnitsNumber" type="number" min="0" max="800000" step="10000" value="0" aria-label="Gas units exact value">
+            </div>
+          </div>
+
+          <div class="control">
+            <label for="baseFee">Base fee <span id="baseFeeValue" class="value"></span></label>
+            <div class="control-fields">
+              <input id="baseFee" type="range" min="0" max="30000" step="25" value="0">
+              <input id="baseFeeNumber" type="number" min="0" max="30000" step="25" value="0" aria-label="Base fee exact value">
+            </div>
+          </div>
+
+          <div class="control">
+            <label for="priorityFee">Priority fee <span id="priorityFeeValue" class="value"></span></label>
+            <div class="control-fields">
+              <input id="priorityFee" type="range" min="0" max="50" step="0.5" value="0">
+              <input id="priorityFeeNumber" type="number" min="0" max="50" step="0.5" value="0" aria-label="Priority fee exact value">
+            </div>
+          </div>
+
+          <div class="control">
+            <label for="nativePrice">Gas token price <span id="nativePriceValue" class="value"></span></label>
+            <div class="control-fields">
+              <input id="nativePrice" type="range" min="0" max="5000" step="1" value="1">
+              <input id="nativePriceNumber" type="number" min="0" max="5000" step="1" value="1" aria-label="Gas token price exact value">
+            </div>
+          </div>
+        </div>
+      </details>
     </aside>
 
     <section class="grid">
@@ -489,11 +578,35 @@
           <strong id="victimOut"></strong>
         </div>
         <div class="metric">
+          <span>No-attack output</span>
+          <strong id="noAttackOut"></strong>
+        </div>
+        <div class="metric">
+          <span>Victim loss</span>
+          <strong id="victimLoss"></strong>
+        </div>
+        <div class="metric">
+          <span>Victim loss %</span>
+          <strong id="victimLossPct"></strong>
+        </div>
+        <div class="metric">
           <span>Status</span>
           <strong><span id="status" class="status"></span></strong>
         </div>
       </div>
       <div id="scenarioNote" class="panel scenario-note" role="status" aria-live="polite"></div>
+
+      <details class="panel">
+        <summary>Model Assumptions</summary>
+        <div class="details-body">
+          <p>This simulator uses a simplified constant-product AMM model:</p>
+          <code class="formula">x * y = k</code>
+          <code class="formula">amountInWithFee = amountIn * (1 - fee)</code>
+          <code class="formula">amountOut = reserveOut * amountInWithFee / (reserveIn + amountInWithFee)</code>
+          <p>Each swap updates reserves. Output is computed from the fee-adjusted effective input, while the fee remains in the pool, so k can increase after a swap.</p>
+          <p>This is an educational simulator for EVM-compatible sandwich MEV scenarios. It omits many real-chain execution details such as integer token decimals, routing contracts, builder auctions, mempool latency, and transaction inclusion risk.</p>
+        </div>
+      </details>
 
       <div class="charts">
         <div class="panel">
@@ -512,20 +625,23 @@
           <h2>Pool Price Path</h2>
           <canvas id="states" width="520" height="460" role="img" aria-label="Pool price path after each transaction step"></canvas>
           <div class="legend">
-            <span class="key" style="color: var(--green)"><span class="swatch"></span>Price (Y/X)</span>
+            <span class="key" style="color: var(--green)"><span class="swatch"></span>Price (X/Y)</span>
           </div>
+          <p class="chart-summary">Price is shown as X per Y. Swapping X for Y buys Y, so the displayed X/Y price moves upward.</p>
           <p id="statesSummary" class="chart-summary"></p>
         </div>
 
         <div class="panel wide-panel">
-          <h2>Step Candles</h2>
+          <h2>Synthetic Event Candles</h2>
           <canvas id="candles" width="900" height="380" role="img" aria-label="Event candles for attacker, victim, and unwind transactions"></canvas>
           <div class="legend">
             <span class="key" style="color: var(--red)"><span class="swatch"></span>price down</span>
             <span class="key" style="color: var(--green)"><span class="swatch"></span>price up</span>
-            <span class="key" style="color: var(--blue)"><span class="swatch"></span>MEV buy/sell markers</span>
+            <span class="key" style="color: var(--blue)"><span class="swatch"></span>ordered swap markers</span>
             <span class="key" style="color: var(--muted)"><span class="swatch"></span>one tx per event candle</span>
           </div>
+          <p class="chart-summary">Each candle represents one simulated event in the ordered swap sequence, not a real market time interval.</p>
+          <div id="eventTimeline" class="event-timeline" aria-label="Ordered transaction event timeline"></div>
           <p id="candlesSummary" class="chart-summary"></p>
         </div>
       </div>
@@ -538,18 +654,24 @@
               <tr>
                 <th>Step</th>
                 <th>Action</th>
+                <th>Actor</th>
+                <th>Direction</th>
+                <th>Input</th>
+                <th>Output</th>
                 <th>Reserve X</th>
                 <th>Reserve Y</th>
-                <th>Price (Y/X)</th>
+                <th>Price (X/Y)</th>
               </tr>
             </thead>
             <tbody id="stateRows"></tbody>
           </table>
         </div>
+        <p id="profitSummary" class="profit-summary"></p>
       </div>
     </section>
   </main>
 
+  <script src="mev-model.js"></script>
   <script>
     const els = {
       autoOptimal: document.getElementById("autoOptimal"),
@@ -585,11 +707,16 @@
       gasCost: document.getElementById("gasCost"),
       roi: document.getElementById("roi"),
       victimOut: document.getElementById("victimOut"),
+      noAttackOut: document.getElementById("noAttackOut"),
+      victimLoss: document.getElementById("victimLoss"),
+      victimLossPct: document.getElementById("victimLossPct"),
       status: document.getElementById("status"),
       stateRows: document.getElementById("stateRows"),
       frontier: document.getElementById("frontier"),
       states: document.getElementById("states"),
       candles: document.getElementById("candles"),
+      eventTimeline: document.getElementById("eventTimeline"),
+      profitSummary: document.getElementById("profitSummary"),
       scenarioNote: document.getElementById("scenarioNote"),
       attackerModeHint: document.getElementById("attackerModeHint"),
       frontierSummary: document.getElementById("frontierSummary"),
@@ -668,6 +795,26 @@
       minimumFractionDigits: d
     }) : "-";
 
+    function fmtAmount(amount, digits = 3) {
+      if (!amount || amount.token === "-") return "-";
+      return `${fmt(amount.value, digits)} ${amount.token}`;
+    }
+
+    function clearanceText(outcome) {
+      if (outcome.victimClearance < -MevModel.DEFAULT_EPSILON) {
+        return "Reverts: victim output is below minOut";
+      }
+      if (Math.abs(outcome.victimClearance) <= MevModel.DEFAULT_EPSILON && outcome.attackerIn > 0) {
+        return "Executes at slippage boundary: victim output matches minOut within display tolerance.";
+      }
+      return `Executes: victim output clears minOut by +${fmt(Math.max(0, outcome.victimClearance), 6)} Y`;
+    }
+
+    function appendSentence(prefix, sentence) {
+      const separator = /[.!?]$/.test(prefix) ? " " : ". ";
+      return `${prefix}${separator}${sentence}`;
+    }
+
     function clampToInput(input, value) {
       const min = Number(input.min);
       const max = Number(input.max);
@@ -696,150 +843,31 @@
     }
 
     function previewXForY(pool, dx) {
-      const dxEff = dx * (1 - pool.fee);
-      return pool.y * dxEff / (pool.x + dxEff);
+      return MevModel.previewXForY(pool, dx);
     }
 
     function previewYForX(pool, dy) {
-      const dyEff = dy * (1 - pool.fee);
-      return pool.x * dyEff / (pool.y + dyEff);
+      return MevModel.previewYForX(pool, dy);
     }
 
     function swapXForY(pool, dx) {
-      const out = previewXForY(pool, dx);
-      pool.x += dx;
-      pool.y -= out;
-      return out;
+      return MevModel.swapXForY(pool, dx);
     }
 
     function swapYForX(pool, dy) {
-      const out = previewYForX(pool, dy);
-      pool.y += dy;
-      pool.x -= out;
-      return out;
+      return MevModel.swapYForX(pool, dy);
     }
 
     function simulate(input, attackerIn) {
-      const start = { x: input.depth, y: input.depth, fee: input.fee };
-      const honestOut = previewXForY(start, input.victim);
-      const minOut = honestOut * (1 - input.slippage);
-      const states = [{ step: "0", action: "initial", x: start.x, y: start.y, price: priceOf(start) }];
-
-      if (attackerIn <= 0) {
-        const p0 = { ...start };
-        const victimActual = swapXForY(p0, input.victim);
-        states.push({ step: "1", action: "victim", x: p0.x, y: p0.y, price: priceOf(p0) });
-        return {
-          attackerIn: 0,
-          frontOut: 0,
-          backOut: 0,
-          profit: 0,
-          gasCost: 0,
-          netProfit: 0,
-          roi: 0,
-          honestOut,
-          minOut,
-          victimActual,
-          victimExtraLoss: 0,
-          reverted: false,
-          states
-        };
-      }
-
-      const p = { ...start };
-      const frontOut = swapXForY(p, attackerIn);
-      states.push({ step: "1", action: "front-run", x: p.x, y: p.y, price: priceOf(p) });
-      const gasCost = input.gasUnits * (input.baseFeeGwei + input.priorityFeeGwei) * 1e-9 * input.nativePriceX;
-
-      const victimPreview = previewXForY(p, input.victim);
-      if (victimPreview < minOut) {
-        states.push({ step: "2", action: "victim reverts", x: p.x + 0, y: p.y + 0, price: priceOf(p) });
-        const backOut = swapYForX(p, frontOut);
-        const profit = backOut - attackerIn;
-        states.push({ step: "3", action: "unwind", x: p.x, y: p.y, price: priceOf(p) });
-        return {
-          attackerIn,
-          frontOut,
-          backOut,
-          profit,
-          gasCost,
-          netProfit: profit - gasCost,
-          roi: profit / attackerIn,
-          honestOut,
-          minOut,
-          victimActual: victimPreview,
-          victimExtraLoss: honestOut - victimPreview,
-          reverted: true,
-          states
-        };
-      }
-
-      const victimActual = swapXForY(p, input.victim);
-      states.push({ step: "2", action: "victim", x: p.x, y: p.y, price: priceOf(p) });
-      const backOut = swapYForX(p, frontOut);
-      const profit = backOut - attackerIn;
-      states.push({ step: "3", action: "back-run", x: p.x, y: p.y, price: priceOf(p) });
-      return {
-        attackerIn,
-        frontOut,
-        backOut,
-        profit,
-        gasCost,
-        netProfit: profit - gasCost,
-        roi: profit / attackerIn,
-        honestOut,
-        minOut,
-        victimActual,
-        victimExtraLoss: honestOut - victimActual,
-        reverted: false,
-        states
-      };
+      return MevModel.simulate(input, attackerIn);
     }
 
     function maxFeasible(input, hi) {
-      if (!simulate(input, hi).reverted) return hi;
-      let lo = 0;
-      for (let i = 0; i < 64; i += 1) {
-        const mid = (lo + hi) / 2;
-        if (simulate(input, mid).reverted) hi = mid;
-        else lo = mid;
-      }
-      return lo;
+      return MevModel.maxFeasible(input, hi);
     }
 
     function optimal(input) {
-      const cap = input.depth * 10;
-      const hi0 = maxFeasible(input, cap);
-      if (hi0 <= 0) return simulate(input, 0);
-
-      const phi = (Math.sqrt(5) - 1) / 2;
-      let lo = 0;
-      let hi = hi0;
-      let c = hi - phi * (hi - lo);
-      let d = lo + phi * (hi - lo);
-      const profit = (a) => {
-        const o = simulate(input, a);
-        return o.reverted ? Number.NEGATIVE_INFINITY : o.profit;
-      };
-
-      for (let i = 0; i < 100; i += 1) {
-        if (Math.abs(hi - lo) < 1e-10) break;
-        if (profit(c) > profit(d)) hi = d;
-        else lo = c;
-        c = hi - phi * (hi - lo);
-        d = lo + phi * (hi - lo);
-      }
-
-      const candidate = simulate(input, (lo + hi) / 2);
-      if (candidate.profit > candidate.gasCost) {
-        candidate.grossCandidate = candidate;
-        candidate.skippedByGas = false;
-        return candidate;
-      }
-      const skipped = simulate(input, 0);
-      skipped.grossCandidate = candidate;
-      skipped.skippedByGas = candidate.profit > 0;
-      return skipped;
+      return MevModel.optimizeGrossProfitWithGasCheck(input);
     }
 
     function currentInput() {
@@ -851,7 +879,7 @@
         gasUnits: Number(els.gasUnits.value),
         baseFeeGwei: Number(els.baseFee.value),
         priorityFeeGwei: Number(els.priorityFee.value),
-        nativePriceX: Number(els.nativePrice.value)
+        gasTokenPriceInX: Number(els.nativePrice.value)
       };
     }
 
@@ -883,11 +911,8 @@
 
       const pad = { l: 58, r: 58, t: 24, b: 46 };
       const upper = Math.max(best.attackerIn * 2.4, selected.attackerIn * 1.1, input.victim * 2.5, 1);
-      const rows = [];
-      for (let i = 0; i <= 160; i += 1) {
-        const a = upper * i / 160;
-        rows.push({ a, ...simulate(input, a) });
-      }
+      const rows = MevModel.frontierRows(input, upper, 160);
+      const infeasibleRegion = MevModel.frontierInfeasibleRegion(input, upper);
 
       const profits = rows.map(r => r.profit);
       const outputs = rows.map(r => r.victimActual);
@@ -908,6 +933,15 @@
       ctx.lineTo(w - pad.r, h - pad.b);
       ctx.stroke();
 
+      if (infeasibleRegion.shadeStart < upper) {
+        const shadeX = x(infeasibleRegion.shadeStart);
+        ctx.fillStyle = "rgba(92, 102, 117, 0.13)";
+        ctx.fillRect(shadeX, pad.t, w - pad.r - shadeX, h - pad.t - pad.b);
+        ctx.fillStyle = "#5c6675";
+        ctx.font = "12px system-ui";
+        ctx.fillText("Beyond this point: victim reverts", Math.min(shadeX + 8, w - pad.r - 185), pad.t + 18);
+      }
+
       ctx.fillStyle = "#5c6675";
       ctx.font = "13px system-ui";
       ctx.fillText("attacker size X", w / 2 - 48, h - 12);
@@ -922,7 +956,9 @@
       ctx.fillText("victim output Y", 0, 0);
       ctx.restore();
 
-      function line(points, color, yFn, dash = []) {
+      function line(points, color, yFn, dash = [], alpha = 1) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
         ctx.strokeStyle = color;
         ctx.lineWidth = 2.5;
         ctx.setLineDash(dash);
@@ -935,9 +971,11 @@
         });
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.restore();
       }
 
-      line(rows, "#c7394b", r => yProfit(r.profit));
+      line(rows.filter(r => !r.infeasible), "#c7394b", r => yProfit(r.profit));
+      line(rows.filter(r => r.infeasible), "#c7394b", r => yProfit(r.profit), [4, 5], 0.45);
       line(rows, "#276fbf", r => yOut(r.victimActual), [6, 5]);
 
       ctx.strokeStyle = "#a96600";
@@ -999,12 +1037,13 @@
     }
 
     function priceOf(pool) {
-      return pool.y / pool.x;
+      return MevModel.priceOf(pool);
     }
 
     function candleWithWicks(open, close, volume, side, marker, strength, seed) {
       const body = Math.abs(close - open);
       const scale = Math.max(body, open * 0.00055) * strength;
+      const wickScale = marker ? 0 : scale;
       const upperBias = side === "xToY" ? 1.35 : 0.82;
       const lowerBias = side === "yToX" ? 1.35 : 0.82;
       const waveA = 0.72 + 0.36 * Math.abs(Math.sin(seed * 1.71));
@@ -1013,8 +1052,8 @@
       return {
         open,
         close,
-        high: Math.max(open, close) + scale * upperBias * waveA,
-        low: Math.min(open, close) - scale * lowerBias * waveB,
+        high: Math.max(open, close) + wickScale * upperBias * waveA,
+        low: Math.min(open, close) - wickScale * lowerBias * waveB,
         volume,
         side,
         marker
@@ -1137,23 +1176,26 @@
     function stageMarker(action) {
       if (action === "front-run") {
         return {
-          title: "MEV BUY",
-          subtitle: "attacker X -> Y",
+          title: "Front-run: X → Y",
+          shortTitle: "1 Front-run",
+          subtitle: "attacker X → Y",
           color: "#276fbf",
           role: "buy"
         };
       }
       if (action === "back-run") {
         return {
-          title: "MEV SELL",
-          subtitle: "attacker Y -> X",
+          title: "Back-run: Y → X",
+          shortTitle: "3 Back-run",
+          subtitle: "attacker Y → X",
           color: "#7b4ab8",
           role: "sell"
         };
       }
       if (action === "unwind") {
         return {
-          title: "MEV SELL",
+          title: "Unwind: Y → X",
+          shortTitle: "3 Unwind",
           subtitle: "failed attack unwind",
           color: "#a96600",
           role: "sell"
@@ -1162,14 +1204,16 @@
       if (action === "victim reverts") {
         return {
           title: "VICTIM REVERTS",
+          shortTitle: "2 Revert",
           subtitle: "below minOut",
           color: "#c7394b",
           role: "event"
         };
       }
       return {
-        title: "VICTIM SWAP",
-        subtitle: "victim X -> Y",
+        title: "Victim: X → Y",
+        shortTitle: "2 Victim",
+        subtitle: "victim X → Y",
         color: "#25364a",
         role: "victim"
       };
@@ -1252,12 +1296,6 @@
         ctx.lineTo(endX, h - pad.b);
         ctx.stroke();
         ctx.setLineDash([]);
-
-        const label = stage.marker.title.replace("MEV ", "");
-        ctx.fillStyle = "#93a4b8";
-        ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
-        const labelX = Math.max(pad.l + 4, Math.min(w - pad.r - 58, x(stage.center) - 22));
-        ctx.fillText(label, labelX, h - 25);
       });
 
       const bodyW = Math.max(7, Math.min(20, slot * 0.68));
@@ -1294,12 +1332,8 @@
       });
 
       stages.forEach(stage => {
-        const slice = candles.slice(stage.start, stage.end + 1);
         const cx = x(stage.center);
-        const stageHigh = Math.max(...slice.map(c => c.high));
-        const stageLow = Math.min(...slice.map(c => c.low));
-        const markerY = stage.marker.role === "sell" ? y(stageHigh) - 10 : y(stageLow) + 18;
-        drawTradeMarker(ctx, cx, markerY, stage.marker);
+        drawBandLabel(ctx, cx, pad.t + 16, stage.marker);
       });
 
       events.forEach(event => {
@@ -1328,27 +1362,25 @@
       const lowAll = Math.min(...candles.map(c => c.low));
       ctx.fillStyle = "#e5edf7";
       ctx.font = "700 13px ui-monospace, SFMono-Regular, Menlo, monospace";
-      ctx.fillText("Price (Y/X) Event Candles", pad.l, 18);
-      ctx.fillStyle = change >= 0 ? "#16c784" : "#ea3943";
-      ctx.fillText(`${change >= 0 ? "+" : ""}${fmt(change, 3)}%`, pad.l + 160, 18);
+      ctx.fillText("Price (X/Y) Event Candles", pad.l, 18);
       ctx.fillStyle = "#93a4b8";
       ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
       ctx.fillText(
-        `O ${fmt(first, 4)}  H ${fmt(highAll, 4)}  L ${fmt(lowAll, 4)}  C ${fmt(last, 4)}`,
-        pad.l + 244,
-        18
+        `O ${fmt(first, 4)}  H ${fmt(highAll, 4)}  L ${fmt(lowAll, 4)}  C ${fmt(last, 4)}  ${change >= 0 ? "+" : ""}${fmt(change, 3)}%`,
+        pad.l,
+        34
       );
       ctx.fillStyle = "#93a4b8";
       ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
-      ctx.fillText("Price (Y/X)", pad.l, h - 8);
+      ctx.fillText("Price (X/Y)", pad.l, h - 8);
     }
 
-    function drawTradeMarker(ctx, x, y, marker) {
-      const tag = marker.title;
-      const tagW = tag.length > 8 ? 84 : 60;
+    function drawBandLabel(ctx, x, y, marker) {
+      const tag = marker.shortTitle;
+      const tagW = Math.min(132, Math.max(74, tag.length * 7 + 14));
       const tagH = 22;
       const tagX = x - tagW / 2;
-      const tagY = marker.role === "sell" ? y - tagH - 8 : y + 8;
+      const tagY = y;
       ctx.fillStyle = marker.color;
       ctx.beginPath();
       roundRect(ctx, tagX, tagY, tagW, tagH, 5);
@@ -1357,20 +1389,6 @@
       ctx.fillStyle = "#ffffff";
       ctx.font = "700 11px system-ui";
       ctx.fillText(tag, tagX + 7, tagY + 15);
-
-      ctx.fillStyle = marker.color;
-      ctx.beginPath();
-      if (marker.role === "sell") {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x - 6, y - 8);
-        ctx.lineTo(x + 6, y - 8);
-      } else {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x - 6, y + 8);
-        ctx.lineTo(x + 6, y + 8);
-      }
-      ctx.closePath();
-      ctx.fill();
     }
 
     function drawEventMarker(ctx, x, y, marker) {
@@ -1410,7 +1428,7 @@
       }
       const attackerIn = Number(els.attacker.value);
       const selected = els.autoOptimal.checked ? best : simulate(input, attackerIn);
-      const pricePath = selected.states.map(s => fmt(s.price, 6)).join(" -> ");
+      const pricePath = selected.states.map(s => fmt(s.price, 6)).join(" → ");
 
       els.victimValue.textContent = `${fmt(input.victim, 0)} X`;
       els.slippageValue.textContent = `${fmt(input.slippage * 100, 2)}%`;
@@ -1419,12 +1437,12 @@
       els.gasUnitsValue.textContent = fmt(input.gasUnits, 0);
       els.baseFeeValue.textContent = `${fmt(input.baseFeeGwei, 1)} gwei`;
       els.priorityFeeValue.textContent = `${fmt(input.priorityFeeGwei, 1)} gwei`;
-      els.nativePriceValue.textContent = `${fmt(input.nativePriceX, 0)} X/gas token`;
+      els.nativePriceValue.textContent = `${fmt(input.gasTokenPriceInX, 0)} X/gas token`;
       els.attackerValue.textContent = `${fmt(selected.attackerIn, 3)} X`;
       els.attacker.disabled = els.autoOptimal.checked;
       els.attackerNumber.disabled = els.autoOptimal.checked;
       els.attackerModeHint.textContent = els.autoOptimal.checked
-        ? "Auto mode: the slider is locked to the gas-aware optimizer result."
+        ? "Auto mode: the slider is locked to the gross-profit optimizer with gas-adjusted net profit check."
         : "Manual mode: use the slider or exact input to test a fixed attacker size.";
 
       els.profit.textContent = `${fmt(selected.profit, 6)} X`;
@@ -1434,44 +1452,53 @@
       els.gasCost.textContent = `${fmt(selected.gasCost, 6)} X`;
       els.roi.textContent = selected.attackerIn > 0 ? `${fmt(selected.roi * 100, 4)}%` : "0.0000%";
       els.victimOut.textContent = `${fmt(selected.victimActual, 6)} Y`;
-      if (selected.reverted) {
-        els.status.textContent = "reverted";
-        els.status.className = "status reverted";
-      } else if (selected.netProfit < 0) {
-        els.status.textContent = "net loss";
-        els.status.className = "status reverted";
-      } else {
-        els.status.textContent = "executes";
-        els.status.className = "status";
-      }
+      els.noAttackOut.textContent = `${fmt(selected.noAttackVictimOutput, 6)} Y`;
+      els.victimLoss.textContent = `${fmt(selected.victimLoss, 6)} Y`;
+      els.victimLossPct.textContent = `${fmt(selected.victimLossPct * 100, 4)}%`;
+      els.status.textContent = selected.statusLabel;
+      els.status.className = selected.statusKind === "profitable" || selected.statusKind === "boundary"
+        ? "status"
+        : "status reverted";
 
       if (els.autoOptimal.checked && selected.skippedByGas) {
         const gross = selected.grossCandidate;
         els.scenarioNote.textContent =
-          `Gas-aware optimizer skips the sandwich: the best gross attack would earn ${fmt(gross.profit, 6)} X before gas, ` +
+          `Gas-adjusted check skips the sandwich: the best gross attack would earn ${fmt(gross.profit, 6)} X before gas, ` +
           `but gas would cost ${fmt(gross.gasCost, 6)} X, making net profit ${fmt(gross.netProfit, 6)} X.`;
       } else if (selected.reverted) {
         els.scenarioNote.textContent =
-          "The victim output falls below minOut, so the victim reverts and the attacker only unwinds the failed front-run.";
+          appendSentence(clearanceText(selected), "The attacker only unwinds the failed front-run.");
       } else if (selected.attackerIn <= 0) {
         els.scenarioNote.textContent =
-          "No sandwich is selected. The chart still shows how the victim swap changes the pool by itself.";
+          appendSentence(clearanceText(selected), "No sandwich is selected; the chart still shows how the victim swap changes the pool by itself.");
       } else {
         els.scenarioNote.textContent =
-          "The selected sandwich executes: attacker front-runs, the victim still clears minOut, then attacker back-runs.";
+          appendSentence(clearanceText(selected), "The selected sandwich executes: attacker front-runs, victim output satisfies minOut, then attacker back-runs.");
       }
 
       els.frontierSummary.textContent =
         `Selected attacker size ${fmt(selected.attackerIn, 3)} X; victim output ${fmt(selected.victimActual, 6)} Y vs minOut ${fmt(selected.minOut, 6)} Y.`;
-      els.statesSummary.textContent = `Price path (Y/X): ${pricePath}.`;
+      if (selected.statusKind === "boundary") {
+        els.frontierSummary.textContent += " Selected attacker size is at the slippage boundary.";
+      }
+      els.statesSummary.textContent = `Price path (X/Y): ${pricePath}.`;
       els.candlesSummary.textContent = selected.reverted
         ? "Candles show the front-run followed by a victim revert and attacker unwind."
         : "Candles show the ordered swap events and the final pool price after execution.";
+      els.eventTimeline.innerHTML = selected.states
+        .filter(s => s.actor !== "-")
+        .map((s, idx) => `<span class="event-step">${idx + 1}. ${s.action}: ${s.direction}</span>`)
+        .join("");
+      els.profitSummary.textContent = MevModel.attackerProfitSummary(selected, n => fmt(n, 3));
 
       els.stateRows.innerHTML = selected.states.map(s => `
         <tr>
           <td>${s.step}</td>
           <td>${s.action}</td>
+          <td>${s.actor}</td>
+          <td>${s.direction}</td>
+          <td>${fmtAmount(s.input)}</td>
+          <td>${fmtAmount(s.output)}</td>
           <td>${fmt(s.x, 3)}</td>
           <td>${fmt(s.y, 3)}</td>
           <td>${fmt(s.price, 6)}</td>
