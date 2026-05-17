@@ -214,6 +214,14 @@ __marimo__/
 # Generated intermediate artifacts
 data/
 
+# Generated final report artifacts
+Final_Report.pdf
+Final_Report.tex
+Final_Report.bib
+Final_Report.bbl
+Final_Report.blg
+figures/dashboard_kline.png
+
 # Foundry (contracts/)
 contracts/out/
 contracts/cache/
